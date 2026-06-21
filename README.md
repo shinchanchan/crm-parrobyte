@@ -3,10 +3,7 @@
 
 </p>
 
-<h1 align="center">ParroByte — All-in-One Business Automation CRM</h1>
 
-=======
-</p>
 
 <h1 align="center">ParroByte — All-in-One Business Automation CRM</h1>
 
@@ -67,7 +64,7 @@ The platform is built with a **pay-as-you-go credit model** — start free with 
 
 ---
 
-<<<<<<< HEAD
+
 ## 📸 Screenshots Gallery
 
 Below are real screenshots from the ParroByte CRM application. They show the landing page, authentication, dashboard, WhatsApp sessions, contacts, templates, AI assistant, business scraper, API keys, developer docs, admin panel, and help center.
@@ -194,10 +191,7 @@ Below are real screenshots from the ParroByte CRM application. They show the lan
   <em>Alternative landing page preview showing “Powerful WhatsApp CRM Platform”.</em>
 </p>
 
----
 
-=======
->>>>>>> 6d902fe0e284b65c99ccbe0f29cb30388055ff34
 ## 🛠️ Tech Stack
 
 | Layer | Technology |
@@ -461,7 +455,7 @@ Need help with setup, customization, or deployment?
 **ParroByte Team** — Automating business growth across messaging and social platforms.
 
 <p align="center">
-  <img src="public/favicon.svg" alt="ParroByte Logo" width="50" />
+  <img src="https://github.com/shinchanchan/vallarasu_portfolio/blob/main/logo.png" alt="ParroByte Logo" width="500px" height="600px" />
 </p>
 
 ---
