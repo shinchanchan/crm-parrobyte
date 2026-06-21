@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://github.com/shinchanchan/vallarasu_portfolio/blob/main/logo.png" alt="ParroByte Logo" width="100px" height="120px" />
+  <img src="https://github.com/shinchanchan/vallarasu_portfolio/blob/main/logo.png" alt="ParroByte Logo" width="500px" height="600px" />
 </p>
 
 <h1 align="center">ParroByte — All-in-One Business Automation CRM</h1>
