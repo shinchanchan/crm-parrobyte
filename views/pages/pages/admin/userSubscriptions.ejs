@@ -1,0 +1,98 @@
+<div class="mb-6">
+  <h2 class="text-xl font-bold text-gray-900">User Subscriptions</h2>
+  <p class="text-sm text-gray-500">View and manage all active and expired user subscriptions</p>
+</div>
+
+<!-- Admin Navigation -->
+<div class="flex gap-3 mb-6 flex-wrap">
+  <a href="/admin" class="px-5 py-2.5 bg-white border border-pink-200 text-pink-600 text-sm font-medium rounded-xl hover:bg-pink-50 transition-colors flex items-center gap-2">
+    <i class="ri-arrow-left-line"></i> Back to Admin
+  </a>
+  <a href="/admin/subscription-plans" class="px-5 py-2.5 bg-white border border-pink-200 text-pink-600 text-sm font-medium rounded-xl hover:bg-pink-50 transition-colors flex items-center gap-2">
+    <i class="ri-vip-crown-line"></i> Subscription Plans
+  </a>
+</div>
+
+<!-- Stats -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+  <% 
+    const activeSubs = subscriptions.filter(s => s.status === 'active').length;
+    const expiredSubs = subscriptions.filter(s => s.status === 'expired').length;
+    const cancelledSubs = subscriptions.filter(s => s.status === 'cancelled').length;
+    const totalRevenue = subscriptions.filter(s => s.status === 'active' || s.status === 'expired').reduce((sum, s) => sum + (s.amountPaid || 0), 0);
+  %>
+  <% [
+    { label: 'Active Subs', value: activeSubs, icon: 'ri-user-star-line', color: 'bg-green-100 text-green-600' },
+    { label: 'Expired Subs', value: expiredSubs, icon: 'ri-time-line', color: 'bg-amber-100 text-amber-600' },
+    { label: 'Cancelled', value: cancelledSubs, icon: 'ri-close-circle-line', color: 'bg-red-100 text-red-600' },
+    { label: 'Total Revenue', value: '₹' + totalRevenue, icon: 'ri-money-rupee-circle-line', color: 'bg-pink-100 text-pink-600' },
+  ].forEach(s => { %>
+    <div class="bg-white rounded-2xl p-5 border border-pink-100 card-hover">
+      <div class="flex items-center gap-3 mb-3">
+        <div class="w-10 h-10 rounded-xl <%= s.color %> flex items-center justify-center"><i class="<%= s.icon %>"></i></div>
+        <span class="text-sm text-gray-500"><%= s.label %></span>
+      </div>
+      <p class="text-2xl font-bold text-gray-900"><%= s.value %></p>
+    </div>
+  <% }); %>
+</div>
+
+<!-- Subscriptions Table -->
+<div class="bg-white rounded-2xl border border-pink-100 overflow-hidden">
+  <div class="p-5 border-b border-pink-100 flex items-center justify-between">
+    <h3 class="font-semibold text-gray-900">All Subscriptions</h3>
+    <span class="text-xs text-gray-500"><%= subscriptions.length %> total</span>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-gray-50 border-b border-pink-100">
+        <tr>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">User</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Plan</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Status</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Started</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Expires</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Amount</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Payment</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        <% subscriptions.forEach(sub => { %>
+          <% const user = userMap.get(sub.userId); %>
+          <% const plan = planMap.get(sub.planId); %>
+          <tr class="hover:bg-pink-50/50 transition-colors">
+            <td class="px-6 py-4">
+              <div class="font-medium text-gray-900"><%= user ? user.name : 'User #' + sub.userId %></div>
+              <div class="text-xs text-gray-500"><%= user ? user.email : '' %></div>
+            </td>
+            <td class="px-6 py-4">
+              <div class="font-medium text-gray-900"><%= plan ? plan.displayName : 'Plan #' + sub.planId %></div>
+              <div class="text-xs text-gray-500"><%= plan ? plan.periodDays + ' days' : '' %></div>
+            </td>
+            <td class="px-6 py-4">
+              <span class="text-xs px-2.5 py-1 rounded-full
+                <%= sub.status === 'active' ? 'bg-green-100 text-green-600' : sub.status === 'expired' ? 'bg-amber-100 text-amber-600' : 'bg-red-100 text-red-600' %>">
+                <%= sub.status %>
+              </span>
+            </td>
+            <td class="px-6 py-4 text-gray-600"><%= new Date(sub.startedAt).toLocaleDateString('en-IN') %></td>
+            <td class="px-6 py-4">
+              <span class="<%= new Date(sub.expiresAt) < new Date() ? 'text-red-500 font-medium' : 'text-gray-600' %>">
+                <%= new Date(sub.expiresAt).toLocaleDateString('en-IN') %>
+              </span>
+            </td>
+            <td class="px-6 py-4 font-medium text-gray-900">₹<%= sub.amountPaid || 0 %></td>
+            <td class="px-6 py-4 text-xs text-gray-500">
+              <div class="truncate max-w-[150px]" title="<%= sub.razorpayPaymentId || '-' %>"><%= sub.razorpayPaymentId || '-' %></div>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+  <% if (subscriptions.length === 0) { %>
+    <div class="p-8 text-center">
+      <p class="text-sm text-gray-500">No subscriptions yet.</p>
+    </div>
+  <% } %>
+</div>

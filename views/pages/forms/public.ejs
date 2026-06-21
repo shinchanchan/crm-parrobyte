@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= form.title %></title>
+  <meta name="description" content="<%= form.description || 'Submit your enquiry via ParroByte CRM form.' %>">
+  <meta name="keywords" content="enquiry form, contact form, ParroByte CRM">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="<%= typeof baseUrl !== 'undefined' ? baseUrl : '' %>/forms/p/<%= form.slug %>">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="shortcut icon" href="/favicon.svg">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#ec4899">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <meta property="og:title" content="<%= form.title %>">
+  <meta property="og:description" content="<%= form.description || 'Submit your enquiry via ParroByte CRM form.' %>">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="<%= typeof baseUrl !== 'undefined' ? baseUrl : '' %>/forms/p/<%= form.slug %>">
+  <link rel="stylesheet" href="/css/app.css">
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.1.0/fonts/remixicon.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'Inter', sans-serif; }
+    body {
+      background: <%= form.bgColor %>;
+      min-height: 100vh;
+      position: relative;
+      overflow-x: hidden;
+    }
+    /* Background media */
+    .bg-media-layer {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      <% if (form.bgMediaType === 'image' && form.bgMediaData) { %>
+        background-image: url('<%= form.bgMediaData %>');
+        background-size: cover;
+        background-position: center;
+        opacity: 0.25;
+      <% } else if (form.bgMediaType === 'video' && form.bgMediaData) { %>
+        background: transparent;
+      <% } else { %>
+        background:
+          radial-gradient(at 0% 0%, <%= form.primaryColor %>30 0, transparent 50%),
+          radial-gradient(at 100% 0%, <%= form.primaryColor %>20 0, transparent 50%),
+          radial-gradient(at 100% 100%, <%= form.primaryColor %>15 0, transparent 50%),
+          radial-gradient(at 0% 100%, <%= form.primaryColor %>25 0, transparent 50%);
+        filter: blur(60px);
+        animation: meshMove 20s ease-in-out infinite;
+      <% } %>
+    }
+    /* Video background */
+    .bg-video {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0.2;
+    }
+    @keyframes meshMove {
+      0%, 100% { transform: scale(1) translate(0, 0); }
+      33% { transform: scale(1.1) translate(-2%, 2%); }
+      66% { transform: scale(0.95) translate(2%, -2%); }
+    }
+    .glass-card {
+      background: rgba(255, 255, 255, 0.75);
+      backdrop-filter: blur(24px) saturate(160%);
+      -webkit-backdrop-filter: blur(24px) saturate(160%);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.08),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+    }
+    .glass-input {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(8px);
+      border: 1.5px solid <%= form.primaryColor %>25;
+      transition: all 0.25s ease;
+    }
+    .glass-input:focus {
+      background: rgba(255, 255, 255, 0.95);
+      border-color: <%= form.primaryColor %>;
+      box-shadow: 0 0 0 4px <%= form.primaryColor %>15;
+      outline: none;
+    }
+    .glass-input::placeholder { color: <%= form.textColor %>50; }
+    .file-drop-zone {
+      background: rgba(255, 255, 255, 0.5);
+      border: 2px dashed <%= form.primaryColor %>40;
+      transition: all 0.25s ease;
+    }
+    .file-drop-zone:hover, .file-drop-zone.dragover {
+      background: rgba(255, 255, 255, 0.8);
+      border-color: <%= form.primaryColor %>;
+    }
+    .glass-btn {
+      background: linear-gradient(135deg, <%= form.primaryColor %> 0%, <%= form.primaryColor %>dd 100%);
+      box-shadow: 0 4px 20px <%= form.primaryColor %>40, 0 0 0 1px rgba(255,255,255,0.2) inset;
+      transition: all 0.25s ease;
+    }
+    .glass-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 28px <%= form.primaryColor %>55, 0 0 0 1px rgba(255,255,255,0.2) inset;
+    }
+    .glass-btn:active { transform: translateY(0); }
+    .select-glass {
+      background: rgba(255, 255, 255, 0.85);
+      border: 1.5px solid <%= form.primaryColor %>25;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 36px;
+    }
+    .select-glass:focus {
+      border-color: <%= form.primaryColor %>;
+      box-shadow: 0 0 0 4px <%= form.primaryColor %>15;
+      outline: none;
+    }
+    .checkbox-glass {
+      accent-color: <%= form.primaryColor %>;
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+    .success-glass {
+      background: rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(20px) saturate(140%);
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+    }
+    .floating-orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(40px);
+      opacity: 0.15;
+      animation: floatOrb 15s ease-in-out infinite;
+      z-index: 0;
+      pointer-events: none;
+    }
+    @keyframes floatOrb {
+      0%, 100% { transform: translateY(0) scale(1); }
+      50% { transform: translateY(-30px) scale(1.1); }
+    }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #fce7f3; }
+    ::-webkit-scrollbar-thumb { background: #ec4899; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #db2777; }
+    * { scrollbar-width: thin; scrollbar-color: #ec4899 #fce7f3; }
+  </style>
+</head>
+<body style="color:<%= form.textColor %>">
+  <!-- Background media layer -->
+  <div class="bg-media-layer"></div>
+  <% if (form.bgMediaType === 'video' && form.bgMediaData) { %>
+    <video class="bg-video" autoplay muted loop playsinline><source src="<%= form.bgMediaData %>"></video>
+  <% } %>
+
+  <!-- Floating orbs for depth -->
+  <div class="floating-orb w-72 h-72" style="background:<%= form.primaryColor %>; top:-10%; left:-10%; animation-delay:0s;"></div>
+  <div class="floating-orb w-64 h-64" style="background:<%= form.primaryColor %>; bottom:-10%; right:-10%; animation-delay:-5s;"></div>
+
+  <div class="min-h-screen flex items-center justify-center p-4 relative z-10">
+    <div class="w-full max-w-md">
+
+      <!-- Form Card -->
+      <div class="glass-card rounded-3xl p-7 lg:p-8">
+        <div class="text-center mb-7">
+          <div class="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center" style="background:<%= form.primaryColor %>15">
+            <i class="ri-survey-line text-2xl" style="color:<%= form.primaryColor %>"></i>
+          </div>
+          <h1 class="text-2xl font-bold" style="color:<%= form.primaryColor %>"><%= form.title %></h1>
+          <% if (form.description) { %>
+            <p class="text-sm mt-2 leading-relaxed" style="color:<%= form.textColor %>;opacity:0.65"><%= form.description %></p>
+          <% } %>
+        </div>
+
+        <!-- Testimonials -->
+        <%
+        let testimonials = [];
+        try { testimonials = JSON.parse(form.testimonials || '[]'); } catch(e) {}
+        if (testimonials.length) {
+        %>
+        <div class="mb-6">
+          <p class="text-xs font-semibold mb-3 flex items-center gap-1" style="color:<%= form.primaryColor %>">
+            <i class="ri-star-fill"></i> What people say
+          </p>
+          <div class="space-y-2.5">
+            <% testimonials.forEach(function(t) { %>
+              <div class="testimonial-card-pro">
+                <p class="text-xs italic leading-relaxed" style="color:<%= form.textColor %>;opacity:0.8">"<%= t.text %>"</p>
+                <div class="flex items-center justify-between mt-2">
+                  <span class="text-[10px] font-semibold" style="color:<%= form.primaryColor %>"><%= t.name %></span>
+                  <span class="flex gap-0.5">
+                    <% for(let s=0; s<(t.rating||5); s++) { %><i class="ri-star-fill text-yellow-400" style="font-size:9px"></i><% } %>
+                  </span>
+                </div>
+              </div>
+            <% }); %>
+          </div>
+        </div>
+        <% } %>
+
+        <form id="enquiryForm" class="space-y-4" enctype="multipart/form-data">
+          <% form.parsedFields.forEach((field, idx) => { %>
+            <div>
+              <label class="block text-xs font-semibold mb-1.5 tracking-wide uppercase" style="color:<%= form.textColor %>;opacity:0.85">
+                <%= field.label %>
+                <% if (field.required) { %><span style="color:#ef4444">*</span><% } %>
+              </label>
+
+              <% if (field.type === 'textarea') { %>
+                <textarea name="<%= field.label %>" <%= field.required ? 'required' : '' %> rows="3"
+                  class="w-full px-4 py-3 rounded-xl text-sm resize-none glass-input"
+                  placeholder="Enter <%= field.label %>"></textarea>
+
+              <% } else if (field.type === 'select') { %>
+                <% const opts = (field.options || '').split(',').map(function(o){ return o.trim(); }).filter(function(o){ return o; }); %>
+                <select name="<%= field.label %>" <%= field.required ? 'required' : '' %> class="w-full px-4 py-3 rounded-xl text-sm select-glass">
+                  <option value="" disabled selected>Choose <%= field.label %></option>
+                  <% opts.forEach(function(opt){ %>
+                    <option value="<%= opt %>"><%= opt %></option>
+                  <% }); %>
+                </select>
+
+              <% } else if (field.type === 'checkbox') { %>
+                <label class="flex items-center gap-3 cursor-pointer group">
+                  <input type="checkbox" name="<%= field.label %>" <%= field.required ? 'required' : '' %> class="checkbox-glass rounded">
+                  <span class="text-sm group-hover:opacity-80 transition-opacity" style="color:<%= form.textColor %>">I agree to the terms</span>
+                </label>
+
+              <% } else if (field.type === 'date') { %>
+                <input type="date" name="<%= field.label %>" <%= field.required ? 'required' : '' %>
+                  class="w-full px-4 py-3 rounded-xl text-sm glass-input">
+
+              <% } else if (field.type === 'image' || field.type === 'video' || field.type === 'file') { %>
+                <% const accept = field.options || (field.type === 'image' ? '.jpg,.jpeg,.png,.webp' : field.type === 'video' ? '.mp4,.mov,.webm' : '.pdf,.doc,.docx,.xls,.csv'); %>
+                <% const icon = field.type === 'image' ? 'ri-image-line' : field.type === 'video' ? 'ri-video-line' : 'ri-attachment-2-line'; %>
+                <% const labelText = field.type === 'image' ? 'image' : field.type === 'video' ? 'video' : 'file'; %>
+                <div class="file-drop-zone rounded-xl p-4 cursor-pointer relative" onclick="document.getElementById('file_<%= idx %>').click()">
+                  <input type="file" id="file_<%= idx %>" name="<%= field.label %>" <%= field.required ? 'required' : '' %> accept="<%= accept %>"
+                    class="hidden file-upload-input" data-type="<%= field.type %>" onchange="handleFileSelect(this)">
+                  <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style="background:<%= form.primaryColor %>12">
+                      <i class="<%= icon %> text-lg" style="color:<%= form.primaryColor %>"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <p class="text-sm font-medium truncate file-label">Click to upload <%= labelText %></p>
+                      <p class="text-[11px] opacity-50 file-types"><%= accept %></p>
+                    </div>
+                    <i class="ri-upload-cloud-line" style="color:<%= form.primaryColor %>"></i>
+                  </div>
+                  <div class="file-preview hidden mt-3 rounded-lg overflow-hidden"></div>
+                </div>
+
+              <% } else { %>
+                <input type="<%= field.type === 'phone' ? 'tel' : field.type === 'number' ? 'number' : field.type %>"
+                  name="<%= field.label %>" <%= field.required ? 'required' : '' %>
+                  class="w-full px-4 py-3 rounded-xl text-sm glass-input"
+                  placeholder="Enter <%= field.label %>">
+              <% } %>
+            </div>
+          <% }); %>
+
+          <button type="submit" class="w-full mt-2 py-3.5 rounded-xl text-white text-sm font-semibold flex items-center justify-center gap-2 glass-btn">
+            <span id="btnText"><%= form.buttonText %></span>
+            <div id="btnLoader" class="hidden w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+          </button>
+        </form>
+
+        <!-- Success State -->
+        <div id="successMessage" class="hidden text-center py-6">
+          <div class="success-glass rounded-2xl p-6">
+            <div class="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center" style="background:<%= form.primaryColor %>15">
+              <i class="ri-check-line text-3xl" style="color:<%= form.primaryColor %>"></i>
+            </div>
+            <h3 class="font-bold text-lg mb-2" style="color:<%= form.primaryColor %>">Thank You!</h3>
+            <p class="text-sm leading-relaxed" style="color:<%= form.textColor %>;opacity:0.7"><%= form.thankYouMessage %></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <p class="text-center text-[11px] mt-4" style="color:<%= form.textColor %>;opacity:0.35">
+        Powered by ParroByte CRM
+      </p>
+    </div>
+  </div>
+
+  <script>
+    // File upload handler
+    function handleFileSelect(input) {
+      const container = input.closest('.file-drop-zone');
+      const labelEl = container.querySelector('.file-label');
+      const previewEl = container.querySelector('.file-preview');
+
+      if (input.files && input.files[0]) {
+        const file = input.files[0];
+        labelEl.textContent = file.name;
+        labelEl.style.color = '<%= form.primaryColor %>';
+
+        // Preview for images
+        if (input.dataset.type === 'image' && file.type.startsWith('image/')) {
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            previewEl.innerHTML = '<img src="' + e.target.result + '" class="w-full h-32 object-cover rounded-lg">';
+            previewEl.classList.remove('hidden');
+          };
+          reader.readAsDataURL(file);
+        }
+        // Preview for videos
+        else if (input.dataset.type === 'video' && file.type.startsWith('video/')) {
+          previewEl.innerHTML = '<video src="' + URL.createObjectURL(file) + '" class="w-full h-32 rounded-lg" controls></video>';
+          previewEl.classList.remove('hidden');
+        }
+        else {
+          previewEl.classList.add('hidden');
+        }
+      }
+    }
+
+    // Drag and drop
+    document.querySelectorAll('.file-drop-zone').forEach(function(zone) {
+      zone.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        zone.classList.add('dragover');
+      });
+      zone.addEventListener('dragleave', function() {
+        zone.classList.remove('dragover');
+      });
+      zone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        zone.classList.remove('dragover');
+        const input = zone.querySelector('input[type="file"]');
+        if (input && e.dataTransfer.files.length) {
+          input.files = e.dataTransfer.files;
+          handleFileSelect(input);
+        }
+      });
+    });
+
+    // Form submission
+    document.getElementById('enquiryForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const btnText = document.getElementById('btnText');
+      const btnLoader = document.getElementById('btnLoader');
+      btnText.textContent = 'Submitting...';
+      btnLoader.classList.remove('hidden');
+
+      // Build FormData with actual files
+      const formData = new FormData(this);
+
+      try {
+        const res = await fetch(window.location.pathname + '/submit', {
+          method: 'POST',
+          body: formData
+        });
+        const result = await res.json();
+
+        if (result.success) {
+          document.getElementById('enquiryForm').classList.add('hidden');
+          document.getElementById('successMessage').classList.remove('hidden');
+        } else {
+          alert(result.error || 'Failed to submit');
+          btnText.textContent = '<%= form.buttonText %>';
+          btnLoader.classList.add('hidden');
+        }
+      } catch (err) {
+        alert('Network error. Please try again.');
+        btnText.textContent = '<%= form.buttonText %>';
+        btnLoader.classList.add('hidden');
+      }
+    });
+  </script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('/sw.js')
+          .then(function(reg) { console.log('[PWA] SW registered'); })
+          .catch(function(err) { console.log('[PWA] SW registration failed', err); });
+      });
+    }
+  </script>
+</body>
+</html>

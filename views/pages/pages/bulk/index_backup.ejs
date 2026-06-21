@@ -1,0 +1,227 @@
+<div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+  <div>
+    <h2 class="text-xl font-bold text-gray-900">Bulk Messages</h2>
+    <p class="text-sm text-gray-500">Send messages to multiple contacts with configurable gap time</p>
+  </div>
+</div>
+
+<!-- Send Form -->
+<div class="bg-white rounded-2xl border border-pink-100 p-6 mb-6">
+  <h3 class="font-semibold text-gray-900 mb-2"><i class="ri-send-plane-fill text-pink-500"></i> New Bulk Message Job</h3>
+
+  <!-- WhatsApp Ban Warning -->
+  <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-4 flex gap-3">
+    <div class="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center flex-shrink-0">
+      <i class="ri-alert-line text-yellow-600 text-xl"></i>
+    </div>
+    <div>
+      <p class="text-sm font-medium text-yellow-800">WhatsApp Account Safety Warning</p>
+      <p class="text-xs text-yellow-700 mt-1">Sending too many messages too quickly can result in your WhatsApp number being banned by Meta. We enforce a minimum 45-second gap between messages and limit to 30 messages/minute per session. Always ensure recipients have consented to receive your messages.</p>
+    </div>
+  </div>
+
+  <form action="/bulk/send" method="POST" data-loading-text="Starting bulk message job... Please wait">
+    <div class="grid md:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">WhatsApp Session *</label>
+        <select name="sessionId" required class="w-full px-4 py-2.5 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm bg-white">
+          <option value="">Select session</option>
+          <% sessions.filter(s => s.status === 'connected').forEach(s => { %>
+            <option value="<%= s.id %>"><%= s.sessionName %> (<%= s.phoneNumber %>)</option>
+          <% }); %>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Template (optional)</label>
+        <select name="templateId" id="bulkTemplateSelect" onchange="fillBulkTemplate(this)"
+          class="w-full px-4 py-2.5 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm bg-white">
+          <option value="">No template</option>
+          <% templates.forEach(t => { %>
+            <option value="<%= t.id %>" data-content="<%= t.content %>"><%= t.name %></option>
+          <% }); %>
+        </select>
+      </div>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">Message *</label>
+      <textarea name="message" id="bulkMessageContent" rows="3" required
+        class="w-full px-4 py-2.5 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm"
+        placeholder="Your message content..."></textarea>
+    </div>
+
+    <div class="grid md:grid-cols-3 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Select Contacts</label>
+        <select id="contactSelectMode" class="w-full px-4 py-2.5 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm bg-white">
+          <option value="all">All Contacts (Auto-select)</option>
+          <option value="custom">Select Specific</option>
+        </select>
+      </div>
+      <div id="groupFilterDiv" class="hidden">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Filter by Group</label>
+        <select name="filterGroup" class="w-full px-4 py-2.5 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm bg-white">
+          <option value="">All Groups</option>
+          <% const groups = [...new Set(contacts.map(c => c.group))]; %>
+          <% groups.forEach(g => { %>
+            <option value="<%= g %>"><%= g %></option>
+          <% }); %>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Gap Between Messages</label>
+        <div class="flex items-center gap-2">
+          <input type="range" name="gapSeconds" min="45" max="50" value="45" id="gapRange"
+            class="flex-1" oninput="document.getElementById('gapValue').textContent = this.value + 's'">
+          <span id="gapValue" class="text-sm font-medium text-pink-600 w-12">45s</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Contact Selection Panel (shown when "Select Specific" chosen) -->
+    <div id="contactPanel" class="hidden border border-pink-200 rounded-xl p-4 max-h-60 overflow-y-auto">
+      <div class="flex items-center gap-2 mb-3">
+        <input type="checkbox" id="selectAllContacts" class="rounded border-pink-200">
+        <label class="text-sm font-medium text-gray-700">Select All</label>
+        <span class="text-xs text-gray-400 ml-auto" id="bulkSelectedCount">0 selected</span>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+        <% contacts.forEach(c => { %>
+          <label class="flex items-center gap-2 p-2 rounded-lg hover:bg-pink-50 cursor-pointer">
+            <input type="checkbox" name="contactIdsArr" value="<%= c.id %>" class="bulk-contact-check rounded border-pink-200">
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium text-gray-900 truncate"><%= c.name %></p>
+              <p class="text-xs text-gray-500"><%= c.phone %> | <%= c.group %></p>
+            </div>
+          </label>
+        <% }); %>
+      </div>
+    </div>
+
+    <input type="hidden" name="contactIds" id="contactIdsJson" value="[]">
+
+    <button type="submit" onclick="return prepareBulkSubmit()" class="px-6 py-2.5 btn-pink text-white text-sm font-medium rounded-xl hover:shadow-lg transition-all flex items-center gap-2">
+      <i class="ri-rocket-line"></i> Start Bulk Send
+    </button>
+  </form>
+</div>
+
+<!-- Active Jobs with Circular Progress -->
+<% if (jobs && jobs.length > 0) { %>
+<div class="space-y-4">
+  <h3 class="font-semibold text-gray-900">Active Jobs</h3>
+  <% jobs.forEach(job => { %>
+    <div class="bg-white rounded-2xl border border-pink-100 p-6 card-hover" data-job-id="<%= job.id %>">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h4 class="font-medium text-gray-900">Bulk Job #<%= job.id %></h4>
+          <p class="text-xs text-gray-500">
+            <%= job.totalContacts %> contacts | Gap: <%= job.gapSeconds %>s | 
+            <span class="job-status <%= job.status === 'completed' ? 'text-green-600' : job.status === 'processing' ? 'text-yellow-600' : 'text-gray-600' %>"><%= job.status %></span>
+          </p>
+        </div>
+        <div class="relative w-16 h-16">
+          <svg class="w-16 h-16 transform -rotate-90" viewBox="0 0 36 36">
+            <path class="text-gray-200" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="3"/>
+            <path class="text-pink-500 job-progress-ring" stroke-dasharray="<%= Math.round(((job.sentCount + job.failedCount) / (job.totalContacts || 1)) * 100) %>, 100"
+              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="3"/>
+          </svg>
+          <span class="absolute inset-0 flex items-center justify-center text-xs font-bold text-gray-700 job-progress-text">
+            <%= Math.round(((job.sentCount + job.failedCount) / (job.totalContacts || 1)) * 100) %>%
+          </span>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-4 text-sm">
+        <div class="flex items-center gap-2">
+          <span class="w-3 h-3 rounded-full bg-green-500"></span>
+          <span class="text-gray-600">Sent: <span class="font-semibold job-sent"><%= job.sentCount %></span></span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="w-3 h-3 rounded-full bg-red-500"></span>
+          <span class="text-gray-600">Failed: <span class="font-semibold job-failed"><%= job.failedCount %></span></span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="w-3 h-3 rounded-full bg-gray-300"></span>
+          <span class="text-gray-600">Pending: <span class="font-semibold job-pending"><%= job.totalContacts - job.sentCount - job.failedCount %></span></span>
+        </div>
+        <span class="text-xs text-gray-400 ml-auto"><%= job.startedAt ? new Date(job.startedAt).toLocaleString() : '' %></span>
+      </div>
+    </div>
+  <% }); %>
+</div>
+<% } %>
+
+<script>
+function fillBulkTemplate(select) {
+  const option = select.options[select.selectedIndex];
+  if (option.value) document.getElementById('bulkMessageContent').value = option.dataset.content;
+}
+
+// Contact selection mode toggle
+document.getElementById('contactSelectMode').addEventListener('change', function() {
+  const panel = document.getElementById('contactPanel');
+  const filter = document.getElementById('groupFilterDiv');
+  if (this.value === 'custom') {
+    panel.classList.remove('hidden');
+    filter.classList.remove('hidden');
+  } else {
+    panel.classList.add('hidden');
+    filter.classList.add('hidden');
+  }
+});
+
+// Select all contacts
+document.getElementById('selectAllContacts').addEventListener('change', function() {
+  document.querySelectorAll('.bulk-contact-check').forEach(cb => cb.checked = this.checked);
+  updateBulkCount();
+});
+
+// Update count
+document.querySelectorAll('.bulk-contact-check').forEach(cb => {
+  cb.addEventListener('change', updateBulkCount);
+});
+
+function updateBulkCount() {
+  const checked = document.querySelectorAll('.bulk-contact-check:checked');
+  document.getElementById('bulkSelectedCount').textContent = checked.length + ' selected';
+}
+
+function prepareBulkSubmit() {
+  const mode = document.getElementById('contactSelectMode').value;
+  if (mode === 'custom') {
+    const checked = document.querySelectorAll('.bulk-contact-check:checked');
+    if (checked.length === 0) { alert('Select at least one contact'); return false; }
+    const ids = Array.from(checked).map(cb => cb.value);
+    document.getElementById('contactIdsJson').value = JSON.stringify(ids);
+  }
+  return true;
+}
+
+// Poll job status for live progress updates
+function pollJobStatus() {
+  document.querySelectorAll('[data-job-id]').forEach(card => {
+    const jobId = card.dataset.jobId;
+    fetch('/bulk/status/' + jobId)
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) return;
+        const total = data.total || 1;
+        const pct = Math.round(((data.sent + data.failed) / total) * 100);
+        
+        card.querySelector('.job-progress-ring').setAttribute('stroke-dasharray', pct + ', 100');
+        card.querySelector('.job-progress-text').textContent = pct + '%';
+        card.querySelector('.job-sent').textContent = data.sent;
+        card.querySelector('.job-failed').textContent = data.failed;
+        card.querySelector('.job-pending').textContent = total - data.sent - data.failed;
+        card.querySelector('.job-status').textContent = data.status;
+      })
+      .catch(() => {});
+  });
+}
+
+// Poll every 3 seconds if there are active jobs
+if (document.querySelectorAll('[data-job-id]').length > 0) {
+  setInterval(pollJobStatus, 3000);
+}
+</script>

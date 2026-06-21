@@ -1,0 +1,100 @@
+<div class="mb-6">
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div>
+      <h2 class="text-xl font-bold text-gray-900">Customer Feedback</h2>
+      <p class="text-sm text-gray-500">View and manage feedback submitted by users before logout</p>
+    </div>
+    <div class="flex gap-2">
+      <span class="px-3 py-1.5 bg-pink-100 text-pink-600 rounded-lg text-xs font-medium">
+        <i class="ri-feedback-line mr-1"></i> <%= feedbacks.length %> Total
+      </span>
+      <span class="px-3 py-1.5 bg-amber-100 text-amber-600 rounded-lg text-xs font-medium">
+        <i class="ri-mail-unread-line mr-1"></i> <%= feedbacks.filter(f => !f.isRead).length %> Unread
+      </span>
+    </div>
+  </div>
+</div>
+
+<% if (feedbacks.length) { %>
+  <div class="space-y-3">
+    <% feedbacks.forEach(fb => { %>
+      <div class="bg-white rounded-2xl border <%= fb.isRead ? 'border-gray-100' : 'border-pink-200' %> p-5 transition-all hover:shadow-md" data-id="<%= fb.id %>">
+        <div class="flex items-start justify-between gap-4">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 mb-2">
+              <h4 class="font-semibold text-gray-900"><%= fb.name %></h4>
+              <% if (!fb.isRead) { %>
+                <span class="text-[10px] px-2 py-0.5 rounded-full bg-pink-100 text-pink-600 font-medium">New</span>
+              <% } %>
+              <span class="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
+                <%= fb.createdAt ? new Date(fb.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '' %>
+              </span>
+            </div>
+
+            <div class="flex items-center gap-3 text-xs text-gray-500 mb-3">
+              <% if (fb.phone) { %>
+                <span class="flex items-center gap-1"><i class="ri-phone-line"></i> <%= fb.phone %></span>
+              <% } %>
+              <% if (fb.email) { %>
+                <span class="flex items-center gap-1"><i class="ri-mail-line"></i> <%= fb.email %></span>
+              <% } %>
+              <% if (fb.userId) { %>
+                <span class="flex items-center gap-1"><i class="ri-user-line"></i> User #<%= fb.userId %></span>
+              <% } %>
+              <span class="flex items-center gap-1 text-amber-500">
+                <% for (let i = 1; i <= 5; i++) { %>
+                  <i class="ri-star<%= i <= fb.rating ? '-fill' : '-line' %>"></i>
+                <% } %>
+              </span>
+            </div>
+
+            <div class="bg-gray-50 rounded-xl p-3">
+              <p class="text-sm text-gray-700"><%= fb.message %></p>
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-1">
+            <% if (!fb.isRead) { %>
+              <button onclick="markRead(<%= fb.id %>, this)" class="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors" title="Mark as read">
+                <i class="ri-mail-open-line"></i>
+              </button>
+            <% } %>
+            <form action="/feedback/admin/delete/<%= fb.id %>" method="POST" class="inline" onsubmit="return confirm('Delete this feedback?')">
+              <button type="submit" class="p-2 text-red-400 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
+                <i class="ri-delete-bin-line"></i>
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    <% }); %>
+  </div>
+<% } else { %>
+  <div class="bg-white rounded-2xl border border-gray-100 p-12 text-center">
+    <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+      <i class="ri-feedback-line text-2xl text-gray-400"></i>
+    </div>
+    <p class="text-sm text-gray-500">No feedback yet. Users will see a feedback form when they logout.</p>
+  </div>
+<% } %>
+
+<script>
+async function markRead(id, btn) {
+  try {
+    const res = await fetch('/feedback/admin/read/' + id, { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      const card = document.querySelector('[data-id="' + id + '"]');
+      if (card) {
+        card.classList.remove('border-pink-200');
+        card.classList.add('border-gray-100');
+        const badge = card.querySelector('.bg-pink-100');
+        if (badge) badge.remove();
+      }
+      btn.remove();
+    }
+  } catch (err) {
+    console.error('Mark read error:', err);
+  }
+}
+</script>

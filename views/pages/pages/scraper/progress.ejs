@@ -1,0 +1,161 @@
+<div class="max-w-xl mx-auto py-12 px-4 text-center">
+  <div class="bg-white rounded-2xl border border-pink-100 p-8 shadow-sm">
+    <!-- Loading Spinner -->
+    <div class="mb-6">
+      <div id="statusIcon" class="w-20 h-20 rounded-full bg-pink-50 flex items-center justify-center mx-auto mb-4">
+        <i id="statusSpinner" class="ri-loader-4-line text-4xl text-pink-500 animate-spin"></i>
+        <i id="statusCheck" class="ri-check-line text-4xl text-green-500 hidden"></i>
+        <i id="statusError" class="ri-error-warning-line text-4xl text-red-500 hidden"></i>
+      </div>
+      <h1 id="statusTitle" class="text-xl font-bold text-gray-900">Scraping in Progress...</h1>
+      <p id="statusSub" class="text-sm text-gray-500 mt-1">Please wait while we search Google Maps</p>
+    </div>
+
+    <!-- Progress Info -->
+    <div class="bg-gray-50 rounded-xl p-4 mb-6 text-left">
+      <div class="grid grid-cols-2 gap-3 text-sm">
+        <div>
+          <span class="text-gray-400">Query</span>
+          <p class="font-medium text-gray-900 truncate"><%= job.query || '—' %></p>
+        </div>
+        <div>
+          <span class="text-gray-400">Location</span>
+          <p class="font-medium text-gray-900 truncate"><%= job.location || '—' %></p>
+        </div>
+        <div>
+          <span class="text-gray-400">Max Results</span>
+          <p class="font-medium text-gray-900"><%= job.maxResults || 10 %></p>
+        </div>
+        <div>
+          <span class="text-gray-400">Status</span>
+          <p id="jobStatusText" class="font-medium text-pink-600 capitalize"><%= job.status %></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Progress Bar -->
+    <div class="mb-6">
+      <div class="flex justify-between text-xs text-gray-500 mb-1">
+        <span id="progressLabel">Starting...</span>
+        <span id="progressPercent">0%</span>
+      </div>
+      <div class="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+        <div id="progressBar" class="h-full bg-gradient-to-r from-pink-400 to-pink-600 rounded-full transition-all duration-500" style="width: 10%"></div>
+      </div>
+    </div>
+
+    <!-- Live Stats -->
+    <div class="flex items-center justify-center gap-6 mb-6">
+      <div class="text-center">
+        <p id="foundCount" class="text-2xl font-bold text-gray-900">0</p>
+        <p class="text-xs text-gray-400">Found</p>
+      </div>
+      <div class="w-px h-10 bg-gray-200"></div>
+      <div class="text-center">
+        <p id="targetCount" class="text-2xl font-bold text-gray-900"><%= job.maxResults || 10 %></p>
+        <p class="text-xs text-gray-400">Target</p>
+      </div>
+    </div>
+
+    <!-- Messages -->
+    <div id="statusMessage" class="text-sm text-gray-600 mb-6 min-h-[20px]">
+      Initializing browser... This may take a few moments.
+    </div>
+
+    <!-- Actions -->
+    <div id="actionButtons" class="hidden">
+      <a href="/scraper" class="inline-flex items-center gap-2 px-6 py-2.5 btn-pink text-white text-sm font-medium rounded-xl hover:shadow-lg transition-all">
+        <i class="ri-arrow-right-line"></i> View Results
+      </a>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const jobId = <%= job.id %>;
+  const maxResults = <%= job.maxResults || 10 %>;
+  let pollInterval = null;
+  let completed = false;
+
+  const messages = {
+    running: [
+      "Initializing browser...",
+      "Opening Google Maps...",
+      "Searching for businesses...",
+      "Scraping page 1...",
+      "Extracting business details...",
+      "Scraping page 2...",
+      "Finding phone numbers...",
+      "Almost there...",
+    ],
+    completed: "Scraping complete! All businesses found.",
+    failed: "Scraping failed. Please try again.",
+  };
+
+  function setProgress(pct, label) {
+    document.getElementById('progressBar').style.width = pct + '%';
+    document.getElementById('progressPercent').textContent = pct + '%';
+    if (label) document.getElementById('progressLabel').textContent = label;
+  }
+
+  function setStatus(type, title, sub) {
+    document.getElementById('statusSpinner').classList.add('hidden');
+    document.getElementById('statusCheck').classList.add('hidden');
+    document.getElementById('statusError').classList.add('hidden');
+
+    if (type === 'running') document.getElementById('statusSpinner').classList.remove('hidden');
+    if (type === 'completed') document.getElementById('statusCheck').classList.remove('hidden');
+    if (type === 'failed') document.getElementById('statusError').classList.remove('hidden');
+
+    document.getElementById('statusTitle').textContent = title;
+    if (sub) document.getElementById('statusSub').textContent = sub;
+  }
+
+  async function poll() {
+    if (completed) return;
+    try {
+      const res = await fetch(`/scraper/job-status/${jobId}`);
+      const data = await res.json();
+      if (!data.success) return;
+
+      const job = data.job;
+      const found = job.foundSoFar || job.recordsFound || 0;
+      const pct = Math.min(100, Math.round((found / maxResults) * 100));
+
+      document.getElementById('foundCount').textContent = found;
+      document.getElementById('jobStatusText').textContent = job.status;
+
+      if (job.status === 'completed') {
+        completed = true;
+        clearInterval(pollInterval);
+        setStatus('completed', 'Scraping Complete!', `${found} businesses found`);
+        setProgress(100, 'Done');
+        document.getElementById('statusMessage').textContent = messages.completed;
+        document.getElementById('actionButtons').classList.remove('hidden');
+      } else if (job.status === 'failed') {
+        completed = true;
+        clearInterval(pollInterval);
+        setStatus('failed', 'Scraping Failed', job.errorMessage || 'Unknown error');
+        setProgress(100, 'Failed');
+        document.getElementById('progressBar').classList.remove('from-pink-400', 'to-pink-600');
+        document.getElementById('progressBar').classList.add('bg-red-500');
+        document.getElementById('statusMessage').textContent = messages.failed;
+        document.getElementById('actionButtons').classList.remove('hidden');
+        document.getElementById('actionButtons').innerHTML = `
+          <a href="/scraper" class="inline-flex items-center gap-2 px-6 py-2.5 bg-gray-600 text-white text-sm font-medium rounded-xl hover:shadow-lg transition-all">
+            <i class="ri-arrow-left-line"></i> Back to Scraper
+          </a>`;
+      } else {
+        // Running
+        setProgress(Math.max(10, pct), 'Scraping...');
+        const msgIndex = Math.min(messages.running.length - 1, Math.floor(pct / (100 / messages.running.length)));
+        document.getElementById('statusMessage').textContent = messages.running[msgIndex] || messages.running[0];
+      }
+    } catch (e) {}
+  }
+
+  pollInterval = setInterval(poll, 3000);
+  poll(); // First call immediately
+})();
+</script>

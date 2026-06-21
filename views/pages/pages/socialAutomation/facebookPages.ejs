@@ -1,0 +1,46 @@
+<div class="max-w-2xl mx-auto">
+  <div class="text-center mb-8">
+    <div class="w-16 h-16 rounded-2xl bg-blue-100 flex items-center justify-center mx-auto mb-4">
+      <i class="ri-facebook-circle-fill text-3xl text-blue-600"></i>
+    </div>
+    <h2 class="text-2xl font-bold text-gray-900">Select Facebook Page</h2>
+    <p class="text-sm text-gray-500 mt-2">Choose which page to connect for receiving and sending messages</p>
+  </div>
+
+  <% if (pages.length === 0) { %>
+    <div class="bg-yellow-50 border border-yellow-200 rounded-2xl p-6 text-center">
+      <i class="ri-error-warning-line text-3xl text-yellow-500 mb-3"></i>
+      <p class="text-sm text-yellow-800 font-medium">No Facebook Pages Found</p>
+      <p class="text-xs text-yellow-600 mt-2">You need to be an admin of at least one Facebook Page to use this feature.</p>
+      <a href="/social-automation" class="mt-4 inline-block px-5 py-2 bg-white text-yellow-700 text-sm font-medium rounded-xl border border-yellow-300 hover:bg-yellow-50">
+        Go Back
+      </a>
+    </div>
+  <% } else { %>
+    <div class="space-y-3">
+      <% pages.forEach(page => { %>
+        <form action="/social-automation/facebook/connect-page" method="POST" class="block">
+          <input type="hidden" name="pageId" value="<%= page.id %>">
+          <input type="hidden" name="pageToken" value="<%= page.access_token %>">
+          <input type="hidden" name="pageName" value="<%= page.name %>">
+          <button type="submit" class="w-full flex items-center gap-4 p-4 bg-white border border-gray-200 rounded-2xl hover:border-blue-300 hover:shadow-md transition-all text-left">
+            <div class="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
+              <% if (page.picture && page.picture.data && page.picture.data.url) { %>
+                <img src="<%= page.picture.data.url %>" alt="" class="w-10 h-10 rounded-lg object-cover">
+              <% } else { %>
+                <i class="ri-facebook-circle-fill text-2xl text-blue-500"></i>
+              <% } %>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="font-semibold text-gray-900 text-sm truncate"><%= page.name %></p>
+              <p class="text-xs text-gray-400">ID: <%= page.id %></p>
+            </div>
+            <div class="flex-shrink-0 px-4 py-2 bg-blue-500 text-white text-xs font-medium rounded-xl">
+              Connect
+            </div>
+          </button>
+        </form>
+      <% }); %>
+    </div>
+  <% } %>
+</div>

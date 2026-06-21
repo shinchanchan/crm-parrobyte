@@ -1,0 +1,88 @@
+<div class="mb-6">
+  <h2 class="text-xl font-bold text-gray-900">Services & Pricing</h2>
+  <p class="text-sm text-gray-500">
+    <% if (activeSubscription) { %>
+      <span class="text-green-600 font-medium"><i class="ri-vip-crown-line mr-1"></i><%= activeSubscription.plan.displayName %></span> is active — unlimited usage for included services
+    <% } else { %>
+      Pay-as-you-go credit costs for every service
+    <% } %>
+  </p>
+</div>
+
+<!-- Credit Balance Card -->
+<div class="bg-white rounded-2xl border border-pink-100 p-6 mb-8">
+  <div class="flex items-center justify-between flex-wrap gap-3">
+    <div class="flex items-center gap-4">
+      <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-pink-400 to-pink-600 flex items-center justify-center text-white shadow-lg">
+        <i class="ri-coins-line text-2xl"></i>
+      </div>
+      <div>
+        <p class="text-sm text-gray-500">Available Credits</p>
+        <h3 class="text-3xl font-extrabold text-gray-900">₹<%= creditBalance %></h3>
+      </div>
+    </div>
+    <a href="/billing" class="px-5 py-2.5 btn-pink text-white text-sm font-medium rounded-xl hover:shadow-lg transition-all flex items-center gap-2">
+      <i class="ri-coins-line"></i> Top Up Credits
+    </a>
+  </div>
+</div>
+
+<!-- Service Cards Grid -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+  <% services.forEach(s => { %>
+    <div class="bg-white rounded-2xl border <%= s.isSubscribed ? 'border-green-200 ring-1 ring-green-100' : 'border-gray-100' %> p-5 card-hover hover:border-pink-200 transition-all">
+      <div class="flex items-start justify-between mb-4">
+        <div class="w-12 h-12 rounded-xl <%= s.isSubscribed ? 'bg-gradient-to-br from-green-50 to-green-100 text-green-600' : 'bg-gradient-to-br from-pink-50 to-pink-100 text-pink-600' %> flex items-center justify-center">
+          <i class="<%= s.icon %> text-2xl"></i>
+        </div>
+        <div class="flex flex-col items-end gap-1">
+          <% if (s.isSubscribed) { %>
+            <span class="text-xs px-2 py-1 rounded-full bg-green-100 text-green-600 font-medium">
+              <i class="ri-check-line mr-0.5"></i> Unlimited
+            </span>
+          <% } %>
+          <span class="text-xs px-2 py-1 rounded-full <%= s.isActive ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500' %>">
+            <%= s.isActive ? 'Active' : 'Inactive' %>
+          </span>
+        </div>
+      </div>
+      <h4 class="font-semibold text-gray-900 mb-1"><%= s.serviceName %></h4>
+      <p class="text-xs text-gray-500 mb-3 leading-relaxed"><%= s.description || s.serviceKey %></p>
+      <div class="flex items-center justify-between pt-3 border-t border-gray-50">
+        <span class="text-xs text-gray-400">Per use</span>
+        <% if (s.isSubscribed) { %>
+          <span class="text-lg font-bold text-green-600">FREE</span>
+        <% } else { %>
+          <span class="text-lg font-bold text-pink-600">₹<%= parseFloat(s.cost).toFixed(2) %></span>
+        <% } %>
+      </div>
+    </div>
+  <% }); %>
+</div>
+
+<% if (!services || services.length === 0) { %>
+  <div class="p-8 text-center bg-white rounded-2xl border border-pink-100">
+    <div class="w-16 h-16 rounded-full bg-pink-50 flex items-center justify-center mx-auto mb-3">
+      <i class="ri-apps-line text-2xl text-pink-300"></i>
+    </div>
+    <p class="text-sm text-gray-500">No service configurations found</p>
+  </div>
+<% } %>
+
+<!-- Subscription / Credits CTA -->
+<div class="mt-8 bg-gradient-to-r from-pink-50 to-purple-50 rounded-2xl p-6 border border-pink-100">
+  <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+    <div>
+      <% if (activeSubscription) { %>
+        <h3 class="font-semibold text-gray-900 mb-1">Your <%= activeSubscription.plan.displayName %> is active</h3>
+        <p class="text-sm text-gray-500">Expires on <%= new Date(activeSubscription.subscription.expiresAt).toLocaleDateString('en-IN') %>. Enjoy unlimited usage!</p>
+      <% } else { %>
+        <h3 class="font-semibold text-gray-900 mb-1">Want unlimited usage?</h3>
+        <p class="text-sm text-gray-500">Subscribe to a monthly plan for unlimited service usage. No per-message charges.</p>
+      <% } %>
+    </div>
+    <a href="/billing" class="px-6 py-2.5 btn-pink text-white text-sm font-medium rounded-xl hover:shadow-lg transition-all flex items-center gap-2">
+      <i class="ri-<%= activeSubscription ? 'refresh-line' : 'vip-crown-line' %>"></i> <%= activeSubscription ? 'Manage Subscription' : 'View Plans' %>
+    </a>
+  </div>
+</div>

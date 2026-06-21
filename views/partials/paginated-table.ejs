@@ -1,0 +1,273 @@
+<% 
+// Reusable Paginated Table Component
+// Required locals from controller:
+//   data - array of rows
+//   pagination - { page, perPage, total, totalPages, pageRange, hasPrev, hasNext, startPage, endPage, baseQuery }
+//   columnFilters - { colName: value, ... }
+//   columns - array of { key, label, sortable?, searchable?, format?, width? }
+//   sortCol, sortDir
+//   actionPath - current route path for form action
+%>
+
+<style>
+  .col-search {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 10px;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    transition: all 0.2s;
+    min-width: 160px;
+  }
+  .col-search:focus-within {
+    border-color: #ec4899;
+    box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.1);
+  }
+  .col-search input {
+    border: none;
+    background: transparent;
+    outline: none;
+    font-size: 12px;
+    width: 100%;
+    color: #374151;
+  }
+  .col-search i { color: #9ca3af; font-size: 12px; }
+
+  .table-wrap { border: 1px solid #f3f4f6; border-radius: 16px; overflow: hidden; background: #fff; }
+  .data-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+  .data-table thead th {
+    background: #fdf2f8;
+    padding: 10px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 1px solid #fce7f3;
+    white-space: nowrap;
+  }
+  .data-table tbody td {
+    padding: 14px 14px;
+    font-size: 13px;
+    color: #374151;
+    border-bottom: 1px solid #f9fafb;
+    vertical-align: middle;
+  }
+  .data-table tbody tr:hover { background: #fdf2f8; }
+  .data-table tbody tr:last-child td { border-bottom: none; }
+
+  .sort-btn { cursor: pointer; user-select: none; display: inline-flex; align-items: center; gap: 4px; }
+  .sort-btn:hover { color: #ec4899; }
+  .sort-active { color: #ec4899; }
+
+  .page-btn {
+    min-width: 36px; height: 36px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 10px; font-size: 13px; font-weight: 500;
+    border: 1px solid #e5e7eb; background: #fff; color: #374151;
+    transition: all 0.15s; cursor: pointer; text-decoration: none;
+  }
+  .page-btn:hover { border-color: #ec4899; color: #ec4899; }
+  .page-btn.active { background: #ec4899; color: #fff; border-color: #ec4899; }
+  .page-btn.disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
+
+  .per-page-select {
+    padding: 6px 28px 6px 12px;
+    border-radius: 10px;
+    border: 1px solid #e5e7eb;
+    background: #fff url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") right 8px center/16px no-repeat;
+    font-size: 13px; color: #374151;
+    appearance: none; -webkit-appearance: none;
+    cursor: pointer;
+  }
+
+  /* Inline header search inputs */
+  .th-search {
+    margin-top: 6px;
+    width: 100%;
+  }
+  .th-search input {
+    width: 100%;
+    padding: 5px 8px;
+    border-radius: 8px;
+    border: 1px solid #fce7f3;
+    background: #fff;
+    font-size: 12px;
+    color: #374151;
+    outline: none;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: normal;
+  }
+  .th-search input:focus {
+    border-color: #ec4899;
+    box-shadow: 0 0 0 2px rgba(236, 72, 153, 0.1);
+  }
+  .th-search input::placeholder {
+    color: #d1d5db;
+    font-size: 11px;
+  }
+</style>
+
+<!-- Hidden search form (submitted by header inputs) -->
+<% if (columns.some(c => c.searchable !== false)) { %>
+<form method="GET" action="<%= actionPath %>" id="colSearchForm" class="mb-4 flex items-center gap-3">
+  <a href="<%= actionPath %>" class="px-4 py-2 text-gray-500 text-xs font-medium border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
+    <i class="ri-refresh-line mr-1"></i> Clear Filters
+  </a>
+  <div class="ml-auto flex items-center gap-2">
+    <span class="text-xs text-gray-500">Show</span>
+    <select name="perPage" class="per-page-select" onchange="this.form.submit()">
+      <option value="10" <%= pagination.perPage === 10 ? 'selected' : '' %>>10</option>
+      <option value="30" <%= pagination.perPage === 30 ? 'selected' : '' %>>30</option>
+      <option value="50" <%= pagination.perPage === 50 ? 'selected' : '' %>>50</option>
+    </select>
+  </div>
+  <!-- Preserve sort params -->
+  <input type="hidden" name="sort" value="<%= sortCol || '' %>">
+  <input type="hidden" name="dir" value="<%= sortDir || 'desc' %>">
+</form>
+<% } %>
+
+<!-- Table -->
+<div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <% if (typeof showCheckboxes !== 'undefined' && showCheckboxes) { %>
+          <th style="width:40px">
+            <input type="checkbox" id="selectAll" class="rounded border-gray-300 text-pink-600 focus:ring-pink-500 cursor-pointer">
+          </th>
+        <% } %>
+        <% columns.forEach(col => { %>
+          <th <% if (col.width) { %>style="width:<%= col.width %>"<% } %>>
+            <div class="flex flex-col">
+              <div class="flex items-center gap-1">
+                <% if (col.sortable !== false) { %>
+                  <a href="<%= actionPath %>?<%= pagination.baseQuery %>&sort=<%= col.key %>&dir=<%= (sortCol === col.key && sortDir === 'asc') ? 'desc' : 'asc' %>"
+                     class="sort-btn <%= sortCol === col.key ? 'sort-active' : '' %>">
+                    <%= col.label %>
+                    <% if (sortCol === col.key) { %>
+                      <i class="ri-arrow-<%= sortDir === 'asc' ? 'up' : 'down' %>-line text-xs"></i>
+                    <% } else { %>
+                      <i class="ri-arrow-up-down-line text-xs text-gray-300"></i>
+                    <% } %>
+                  </a>
+                <% } else { %>
+                  <%= col.label %>
+                <% } %>
+              </div>
+              <% if (col.searchable !== false) { %>
+                <div class="th-search">
+                  <input
+                    type="text"
+                    form="colSearchForm"
+                    name="search_<%= col.key %>"
+                    value="<%= (columnFilters && columnFilters[col.key]) || '' %>"
+                    placeholder="Filter <%= col.label %>..."
+                    oninput="delayedSubmit(document.getElementById('colSearchForm'))"
+                  >
+                </div>
+              <% } %>
+            </div>
+          </th>
+        <% }); %>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (data.length === 0) { %>
+        <tr>
+          <td colspan="<%= columns.length + ((typeof showCheckboxes !== 'undefined' && showCheckboxes) ? 1 : 0) %>" class="text-center py-12">
+            <div class="flex flex-col items-center text-gray-400">
+              <i class="ri-inbox-line text-4xl mb-2"></i>
+              <p class="text-sm">No records found</p>
+              <% if (Object.keys(columnFilters || {}).length > 0) { %>
+                <a href="<%= actionPath %>" class="text-xs text-pink-500 mt-2 hover:underline">Clear filters</a>
+              <% } %>
+            </div>
+          </td>
+        </tr>
+      <% } else { %>
+        <% data.forEach((row, idx) => { %>
+          <tr>
+            <% if (typeof showCheckboxes !== 'undefined' && showCheckboxes) { %>
+              <td>
+                <input type="checkbox" class="row-checkbox rounded border-gray-300 text-pink-600 focus:ring-pink-500 cursor-pointer" value="<%= row.id %>">
+              </td>
+            <% } %>
+            <% columns.forEach(col => { %>
+              <td>
+                <% if (col.format) { %>
+                  <%- col.format(row, idx) %>
+                <% } else { %>
+                  <%= row[col.key] || '-' %>
+                <% } %>
+              </td>
+            <% }); %>
+          </tr>
+        <% }); %>
+      <% } %>
+    </tbody>
+  </table>
+</div>
+
+<!-- Pagination Footer -->
+<div class="flex flex-wrap items-center justify-between gap-3 mt-4 px-2">
+  <div class="text-xs text-gray-500">
+    Showing <span class="font-semibold text-gray-700"><%= (pagination.page - 1) * pagination.perPage + 1 %></span>
+    – <span class="font-semibold text-gray-700"><%= Math.min(pagination.page * pagination.perPage, pagination.total) %></span>
+    of <span class="font-semibold text-gray-700"><%= pagination.total %></span> records
+  </div>
+
+  <div class="flex items-center gap-2">
+    <!-- Prev -->
+    <a href="<%= actionPath %>?<%= pagination.baseQuery %>&page=<%= pagination.page - 1 %>"
+       class="page-btn <%= pagination.hasPrev ? '' : 'disabled' %>">
+      <i class="ri-arrow-left-s-line"></i>
+    </a>
+
+    <!-- First + ellipsis -->
+    <% if (pagination.startPage > 1) { %>
+      <a href="<%= actionPath %>?<%= pagination.baseQuery %>&page=1" class="page-btn">1</a>
+      <% if (pagination.startPage > 2) { %>
+        <span class="text-gray-400 text-sm px-1">...</span>
+      <% } %>
+    <% } %>
+
+    <!-- Page numbers (up to 5) -->
+    <% pagination.pageRange.forEach(p => { %>
+      <a href="<%= actionPath %>?<%= pagination.baseQuery %>&page=<%= p %>"
+         class="page-btn <%= p === pagination.page ? 'active' : '' %>"><%= p %></a>
+    <% }); %>
+
+    <!-- Last + ellipsis -->
+    <% if (pagination.endPage < pagination.totalPages) { %>
+      <% if (pagination.endPage < pagination.totalPages - 1) { %>
+        <span class="text-gray-400 text-sm px-1">...</span>
+      <% } %>
+      <a href="<%= actionPath %>?<%= pagination.baseQuery %>&page=<%= pagination.totalPages %>" class="page-btn"><%= pagination.totalPages %></a>
+    <% } %>
+
+    <!-- Next -->
+    <a href="<%= actionPath %>?<%= pagination.baseQuery %>&page=<%= pagination.page + 1 %>"
+       class="page-btn <%= pagination.hasNext ? '' : 'disabled' %>">
+      <i class="ri-arrow-right-s-line"></i>
+    </a>
+  </div>
+</div>
+
+<script>
+let submitTimer = null;
+function delayedSubmit(form) {
+  if (submitTimer) clearTimeout(submitTimer);
+  submitTimer = setTimeout(function() {
+    form.submit();
+  }, 400);
+}
+function clearSearch(colKey) {
+  const input = document.querySelector('input[name="search_' + colKey + '"]');
+  if (input) { input.value = ''; document.getElementById('colSearchForm').submit(); }
+}
+</script>

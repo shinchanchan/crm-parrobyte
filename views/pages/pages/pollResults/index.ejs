@@ -1,0 +1,375 @@
+<%
+// Phone formatter: shows clean readable format + click-to-chat link
+function formatPhone(phone) {
+  if (!phone) return '-';
+  let digits = String(phone).replace(/\D/g, '');
+  if (!digits) return String(phone);
+
+  // Indian: +91 98765 43210 (12 digits starting with 91)
+  if (digits.length === 12 && digits.startsWith('91')) {
+    return '+' + digits.slice(0, 2) + ' ' + digits.slice(2, 7) + ' ' + digits.slice(7);
+  }
+  // Indian without CC: 98765 43210 → add +91
+  if (digits.length === 10) {
+    return '+91 ' + digits.slice(0, 5) + ' ' + digits.slice(5);
+  }
+  // US: +1 987 654 3210 (11 digits starting with 1)
+  if (digits.length === 11 && digits.startsWith('1')) {
+    return '+' + digits.slice(0, 1) + ' ' + digits.slice(1, 4) + ' ' + digits.slice(4, 7) + ' ' + digits.slice(7);
+  }
+  // UK: +44 7700 900000 (12-13 digits starting with 44)
+  if (digits.length >= 12 && digits.length <= 13 && digits.startsWith('44')) {
+    return '+' + digits.slice(0, 2) + ' ' + digits.slice(2, 4) + ' ' + digits.slice(4, 8) + ' ' + digits.slice(8);
+  }
+  // Generic long numbers: show with + and group in 3s
+  if (digits.length > 10) {
+    const groups = [];
+    groups.push('+' + digits.slice(0, digits.length - 10));
+    const rest = digits.slice(digits.length - 10);
+    for (let i = 0; i < rest.length; i += 4) {
+      groups.push(rest.slice(i, i + 4));
+    }
+    return groups.join(' ');
+  }
+  // Short numbers: just return as-is
+  return digits;
+}
+
+// WhatsApp click-to-chat needs clean digits only
+function waPhone(phone) {
+  if (!phone) return '';
+  return String(phone).replace(/\D/g, '');
+}
+%>
+
+<div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+  <div>
+    <h2 class="text-xl font-bold text-gray-900">Poll Results</h2>
+    <p class="text-sm text-gray-500">View poll votes, filter by option, and message voters</p>
+  </div>
+  <div class="flex gap-2">
+    <button onclick="openVoterModal()" id="sendVoterBtn" class="px-4 py-2.5 btn-pink text-white text-sm font-medium rounded-xl hover:shadow-lg transition-all flex items-center gap-2 hidden">
+      <i class="ri-send-plane-line"></i> Send to <span id="voterCountBadge">0</span> Selected
+    </button>
+    <button onclick="deleteSelectedVoters()" id="deleteVoterBtn" class="px-4 py-2.5 bg-red-50 border border-red-200 text-red-600 text-sm font-medium rounded-xl hover:bg-red-100 transition-all flex items-center gap-2 hidden">
+      <i class="ri-delete-bin-line"></i> Delete <span id="deleteCountBadge">0</span> Selected
+    </button>
+    <a href="/developer" class="px-4 py-2.5 bg-white border border-pink-200 text-pink-600 text-sm font-medium rounded-xl hover:bg-pink-50 transition-colors flex items-center gap-2">
+      <i class="ri-code-box-line"></i> API Docs
+    </a>
+  </div>
+</div>
+
+<!-- Aggregates Cards -->
+<% if (Object.keys(aggregates).length > 0) { %>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+  <% Object.entries(aggregates).forEach(([pollName, opts]) => { %>
+    <div class="bg-white rounded-2xl border border-pink-100 p-4">
+      <h3 class="font-semibold text-gray-900 text-sm mb-3"><i class="ri-bar-chart-box-line text-green-500 mr-1"></i> <%= pollName %></h3>
+      <div class="space-y-2">
+        <% Object.entries(opts).sort((a,b) => b[1] - a[1]).forEach(([opt, count]) => { %>
+          <div class="flex items-center justify-between cursor-pointer hover:bg-gray-50 rounded-lg px-2 py-1 -mx-2 transition-colors" onclick="filterByOption('<%= opt.replace(/'/g, "\\'") %>')" title="Click to filter voters who selected this option">
+            <span class="text-xs text-gray-600 flex items-center gap-1"><i class="ri-filter-search-line text-pink-400 opacity-0 hover:opacity-100"></i> <%= opt %></span>
+            <div class="flex items-center gap-2">
+              <div class="w-24 h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div class="h-full bg-pink-500 rounded-full" style="width: <%= Math.min(100, (count / Object.values(opts).reduce((a,b)=>a+b,0)) * 100) %>"></div>
+              </div>
+              <span class="text-xs font-semibold text-gray-700 w-6 text-right"><%= count %></span>
+            </div>
+          </div>
+        <% }); %>
+      </div>
+      <p class="text-[10px] text-gray-400 mt-2 text-right">Total: <%= Object.values(opts).reduce((a,b)=>a+b,0) %> votes</p>
+    </div>
+  <% }); %>
+</div>
+<% } %>
+
+<!-- Option Filter Chips -->
+<% if (typeof allOptions !== 'undefined' && allOptions.length > 0) { %>
+<div class="bg-white rounded-2xl border border-pink-100 p-4 mb-4">
+  <div class="flex items-center gap-2 flex-wrap">
+    <span class="text-xs font-medium text-gray-500">Quick filter by option:</span>
+    <button type="button" onclick="clearOptionFilter()" class="text-xs px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-pink-50 hover:text-pink-600 transition-colors option-chip active" data-option="">All</button>
+    <% allOptions.forEach(opt => { %>
+      <button type="button" onclick="filterByOption('<%= opt.replace(/'/g, "\\'") %>')" class="text-xs px-3 py-1.5 rounded-lg bg-gray-50 text-gray-600 hover:bg-pink-50 hover:text-pink-600 transition-colors option-chip" data-option="<%= opt %>"><%= opt %></button>
+    <% }); %>
+  </div>
+</div>
+<% } %>
+
+<!-- Filters -->
+<div class="bg-white rounded-2xl border border-pink-100 p-4 mb-6">
+  <form method="GET" class="flex flex-col sm:flex-row gap-3" id="filterForm">
+    <div class="flex-1 relative">
+      <i class="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+      <input type="text" name="search" value="<%= search %>" placeholder="Search name, phone, poll, option..."
+        class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm">
+    </div>
+    <select name="poll" class="px-4 py-2.5 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm bg-white">
+      <option value="">All Polls</option>
+      <% pollNames.forEach(name => { %>
+        <option value="<%= name %>" <%= pollFilter === name ? 'selected' : '' %>><%= name %></option>
+      <% }); %>
+    </select>
+    <input type="hidden" name="option" id="optionFilterInput" value="">
+    <button type="submit" class="px-5 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-xl hover:bg-gray-800 transition-colors">
+      <i class="ri-filter-search-line"></i> Filter
+    </button>
+    <% if (search || pollFilter) { %>
+      <a href="/polls" class="px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-100 rounded-xl transition-colors flex items-center gap-1">
+        <i class="ri-close-line"></i> Clear
+      </a>
+    <% } %>
+  </form>
+</div>
+
+<!-- Results Table -->
+<div class="bg-white rounded-2xl border border-pink-100 overflow-hidden">
+  <!-- Selection toolbar -->
+  <div class="px-6 py-3 border-b border-pink-100 flex items-center gap-3 bg-gray-50/50">
+    <input type="checkbox" id="selectAllVoters" class="rounded border-pink-200 text-pink-600 focus:ring-pink-500">
+    <label for="selectAllVoters" class="text-xs font-medium text-gray-600 cursor-pointer">Select All</label>
+    <span class="text-xs text-gray-400 ml-auto" id="tableCount">Showing <%= votes.length %> votes</span>
+  </div>
+
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm" id="votesTable">
+      <thead class="bg-gray-50 border-b border-pink-100">
+        <tr>
+          <th class="px-4 py-3 w-10"></th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Lead</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Phone</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Poll</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Selected Options</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Voted At</th>
+          <th class="text-left px-4 py-3 font-medium text-gray-700 w-10"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        <% if (votes.length === 0) { %>
+          <tr>
+            <td colspan="7" class="px-6 py-8 text-center text-gray-500">
+              <i class="ri-inbox-line text-3xl text-gray-300 mb-2 block"></i>
+              No poll votes found
+            </td>
+          </tr>
+        <% } else { %>
+          <% votes.forEach(v => { %>
+            <tr class="hover:bg-pink-50/50 transition-colors voter-row" data-options="<%= (v.selectedOptions || []).join(',').replace(/"/g, '&quot;') %>">
+              <td class="px-4 py-3">
+                <input type="checkbox" class="voter-checkbox rounded border-pink-200 text-pink-600 focus:ring-pink-500" value="<%= v.leadId %>" data-phone="<%= v.phone %>">
+              </td>
+              <td class="px-6 py-3">
+                <div class="flex items-center gap-2">
+                  <div class="w-8 h-8 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center text-white font-bold text-xs"><%= (v.leadName || '?').charAt(0).toUpperCase() %></div>
+                  <span class="font-medium text-gray-900"><%= v.leadName || 'Unknown' %></span>
+                </div>
+              </td>
+              <td class="px-6 py-3">
+                <span class="text-gray-600 font-mono text-xs"><%= formatPhone(v.phone) %></span>
+                <a href="https://wa.me/<%= waPhone(v.phone) %>" target="_blank" class="text-pink-500 hover:text-pink-600 ml-2" title="Chat on WhatsApp"><i class="ri-whatsapp-line"></i></a>
+              </td>
+              <td class="px-6 py-3">
+                <span class="text-xs bg-green-50 text-green-600 px-2 py-1 rounded-full"><%= v.pollName %></span>
+              </td>
+              <td class="px-6 py-3">
+                <div class="flex flex-wrap gap-1">
+                  <% v.selectedOptions.forEach(opt => { %>
+                    <span class="text-xs bg-pink-50 text-pink-600 px-2 py-0.5 rounded-full"><%= opt %></span>
+                  <% }); %>
+                </div>
+              </td>
+              <td class="px-6 py-3 text-xs text-gray-500"><%= v.votedAt ? new Date(v.votedAt).toLocaleString() : '-' %></td>
+              <td class="px-4 py-3">
+                <form action="/polls/delete-vote" method="POST" class="inline" onsubmit="return confirm('Delete this poll vote?');">
+                  <input type="hidden" name="leadId" value="<%= v.leadId %>">
+                  <input type="hidden" name="votedAt" value="<%= v.votedAt %>">
+                  <button type="submit" class="text-gray-400 hover:text-red-500 transition-colors" title="Delete vote">
+                    <i class="ri-delete-bin-line"></i>
+                  </button>
+                </form>
+              </td>
+            </tr>
+          <% }); %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <% if (pagination.totalPages > 1) { %>
+    <div class="flex flex-wrap items-center justify-between gap-3 p-4 border-t border-pink-100">
+      <div class="text-xs text-gray-500">
+        Showing <span class="font-semibold text-gray-700"><%= (pagination.page - 1) * pagination.perPage + 1 %></span>
+        – <span class="font-semibold text-gray-700"><%= Math.min(pagination.page * pagination.perPage, pagination.total) %></span>
+        of <span class="font-semibold text-gray-700"><%= pagination.total %></span> votes
+      </div>
+      <div class="flex items-center gap-2">
+        <% const baseQ = (search ? '&search=' + encodeURIComponent(search) : '') + (pollFilter ? '&poll=' + encodeURIComponent(pollFilter) : ''); %>
+        <a href="?page=<%= pagination.page - 1 %>&perPage=<%= pagination.perPage %><%= baseQ %>" class="page-btn <%= pagination.hasPrev ? '' : 'disabled' %>"><i class="ri-arrow-left-s-line"></i></a>
+        <% pagination.pageRange.forEach(p => { %>
+          <a href="?page=<%= p %>&perPage=<%= pagination.perPage %><%= baseQ %>" class="page-btn <%= p === pagination.page ? 'active' : '' %>"><%= p %></a>
+        <% }); %>
+        <a href="?page=<%= pagination.page + 1 %>&perPage=<%= pagination.perPage %><%= baseQ %>" class="page-btn <%= pagination.hasNext ? '' : 'disabled' %>"><i class="ri-arrow-right-s-line"></i></a>
+      </div>
+    </div>
+  <% } %>
+</div>
+
+<!-- Send Message to Voters Modal -->
+<dialog id="voterModal" class="modal">
+  <div class="modal-box bg-white rounded-2xl max-w-lg w-full p-6">
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h3 class="font-bold text-lg text-gray-900">Send WhatsApp to Voters</h3>
+        <p class="text-xs text-gray-500 mt-0.5">Selected: <span id="modalVoterCount" class="font-semibold text-pink-600">0</span> voters &bull; 30s gap</p>
+      </div>
+      <button onclick="document.getElementById('voterModal').close()" class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
+        <i class="ri-close-line text-xl"></i>
+      </button>
+    </div>
+
+    <form action="/polls/send-messages" method="POST" data-loading-text="Sending messages...">
+      <input type="hidden" name="voterIds" id="voterIdsInput" value="">
+
+      <!-- Session -->
+      <div class="mb-3">
+        <label class="block text-sm font-medium text-gray-700 mb-1">WhatsApp Session *</label>
+        <% const connectedSessions = (typeof availableSessions !== 'undefined' ? availableSessions : []).filter(s => s.realtimeStatus === 'connected' || s.status === 'connected'); %>
+        <% if (connectedSessions.length > 0) { %>
+          <select name="sessionId" required class="w-full px-4 py-2.5 rounded-xl border border-pink-200 text-sm bg-white outline-none focus:border-pink-500">
+            <option value="">Select session</option>
+            <% connectedSessions.forEach(s => { %>
+              <option value="<%= s.id %>"><%= s.label %></option>
+            <% }); %>
+          </select>
+        <% } else { %>
+          <div class="w-full px-4 py-2.5 rounded-xl border border-red-200 bg-red-50 text-sm text-red-700">No connected session available.</div>
+        <% } %>
+      </div>
+
+      <!-- Template -->
+      <div class="mb-3">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Template (optional)</label>
+        <select name="templateId" id="voterTemplateSelect" class="w-full px-4 py-2.5 rounded-xl border border-pink-200 text-sm bg-white outline-none focus:border-pink-500" onchange="fillVoterTemplate(this)">
+          <option value="">No Template — type custom message</option>
+          <% (typeof templates !== 'undefined' ? templates : []).forEach(t => { %>
+            <option value="<%= t.id %>" data-content="<%= (t.content || '').replace(/"/g, '&quot;') %>"><%= t.name %></option>
+          <% }); %>
+        </select>
+      </div>
+
+      <!-- Message -->
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Message *</label>
+        <textarea name="message" id="voterMessage" rows="4" required placeholder="Type your follow-up message..." class="w-full px-4 py-2.5 rounded-xl border border-pink-200 text-sm outline-none focus:border-pink-500 resize-none"></textarea>
+      </div>
+
+      <input type="hidden" name="messageType" value="text">
+
+      <div class="flex gap-3 justify-end">
+        <button type="button" onclick="document.getElementById('voterModal').close()" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+        <button type="submit" class="px-6 py-2.5 btn-pink text-white text-sm font-medium rounded-xl flex items-center gap-2 hover:shadow-lg transition-all">
+          <i class="ri-send-plane-line"></i> Send Message
+        </button>
+      </div>
+    </form>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+<style>
+  .page-btn { min-width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; font-size: 13px; font-weight: 500; border: 1px solid #e5e7eb; background: #fff; color: #374151; transition: all 0.15s; cursor: pointer; text-decoration: none; }
+  .page-btn:hover { border-color: #ec4899; color: #ec4899; }
+  .page-btn.active { background: #ec4899; color: #fff; border-color: #ec4899; }
+  .page-btn.disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
+  .option-chip.active { background: #fce7f3; color: #db2777; border-color: #f9a8d4; }
+</style>
+
+<script>
+// --- Option filter ---
+function filterByOption(option) {
+  document.getElementById('optionFilterInput').value = option;
+  document.getElementById('filterForm').submit();
+}
+function clearOptionFilter() {
+  document.getElementById('optionFilterInput').value = '';
+  document.getElementById('filterForm').submit();
+}
+
+// Highlight active option chip from URL
+(function() {
+  const url = new URL(window.location.href);
+  const activeOpt = url.searchParams.get('option');
+  if (activeOpt) {
+    document.querySelectorAll('.option-chip').forEach(chip => {
+      chip.classList.toggle('active', chip.dataset.option === activeOpt);
+    });
+  }
+})();
+
+// --- Voter selection ---
+const selectAllCheckbox = document.getElementById('selectAllVoters');
+const voterCheckboxes = document.querySelectorAll('.voter-checkbox');
+const sendBtn = document.getElementById('sendVoterBtn');
+const voterCountBadge = document.getElementById('voterCountBadge');
+const deleteBtn = document.getElementById('deleteVoterBtn');
+const deleteCountBadge = document.getElementById('deleteCountBadge');
+const modalVoterCount = document.getElementById('modalVoterCount');
+const voterIdsInput = document.getElementById('voterIdsInput');
+
+function updateSelection() {
+  const checked = document.querySelectorAll('.voter-checkbox:checked');
+  const count = checked.length;
+  voterCountBadge.textContent = count;
+  deleteCountBadge.textContent = count;
+  modalVoterCount.textContent = count;
+  sendBtn.classList.toggle('hidden', count === 0);
+  deleteBtn.classList.toggle('hidden', count === 0);
+
+  const ids = Array.from(checked).map(cb => cb.value);
+  voterIdsInput.value = JSON.stringify(ids);
+}
+
+selectAllCheckbox.addEventListener('change', function() {
+  document.querySelectorAll('.voter-checkbox').forEach(cb => cb.checked = this.checked);
+  updateSelection();
+});
+
+document.querySelectorAll('.voter-checkbox').forEach(cb => {
+  cb.addEventListener('change', updateSelection);
+});
+
+function openVoterModal() {
+  const checked = document.querySelectorAll('.voter-checkbox:checked');
+  if (checked.length === 0) { alert('Select at least one voter'); return; }
+  document.getElementById('voterModal').showModal();
+}
+
+function deleteSelectedVoters() {
+  const checked = document.querySelectorAll('.voter-checkbox:checked');
+  if (checked.length === 0) { alert('Select at least one voter'); return; }
+  if (!confirm('Delete ' + checked.length + ' selected poll voter(s)? This cannot be undone.')) return;
+
+  const ids = Array.from(checked).map(cb => cb.value);
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = '/polls/delete-leads';
+  const input = document.createElement('input');
+  input.type = 'hidden';
+  input.name = 'voterIds';
+  input.value = JSON.stringify(ids);
+  form.appendChild(input);
+  document.body.appendChild(form);
+  form.submit();
+}
+
+function fillVoterTemplate(select) {
+  const option = select.options[select.selectedIndex];
+  const content = option.dataset.content || '';
+  if (content) {
+    document.getElementById('voterMessage').value = content;
+  }
+}
+</script>

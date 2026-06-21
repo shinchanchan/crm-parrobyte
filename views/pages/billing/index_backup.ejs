@@ -1,0 +1,338 @@
+<div class="mb-6">
+  <h2 class="text-xl font-bold text-gray-900">Billing & Credits</h2>
+  <p class="text-sm text-gray-500">Top up credits and view your transaction history</p>
+</div>
+
+<!-- Credit Balance Card -->
+<div class="bg-white rounded-2xl border border-pink-100 p-6 mb-8">
+  <div class="flex items-center justify-between flex-wrap gap-3">
+    <div class="flex items-center gap-4">
+      <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-pink-400 to-pink-600 flex items-center justify-center text-white shadow-lg">
+        <i class="ri-coins-line text-2xl"></i>
+      </div>
+      <div>
+        <p class="text-sm text-gray-500">Available Credits</p>
+        <h3 class="text-3xl font-extrabold text-gray-900">₹<%= parseFloat(creditBalance).toFixed(2) %></h3>
+      </div>
+    </div>
+    <a href="/billing/services" class="px-4 py-2 bg-white border border-pink-200 text-pink-600 text-sm font-medium rounded-xl hover:bg-pink-50 transition-colors">
+      <i class="ri-apps-line"></i> View Services & Pricing
+    </a>
+    <a href="/billing/transactions" class="px-4 py-2 bg-pink-50 text-pink-600 text-sm font-medium rounded-xl hover:bg-pink-100 transition-colors">
+      View All Transactions
+    </a>
+  </div>
+</div>
+
+<!-- Credit Packages -->
+<div class="mb-8">
+  <h3 class="text-lg font-semibold text-gray-900 mb-6 text-center">Buy Credits</h3>
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
+    <%
+    const pkgMeta = {
+      starter:    { icon: 'ri-seedling-line',    accent: 'from-gray-100 to-gray-200', text: 'text-gray-700', btn: 'bg-gray-900 text-white hover:bg-gray-800', badge: '' },
+      pro:        { icon: 'ri-medal-line',       accent: 'from-slate-200 to-slate-300', text: 'text-slate-700', btn: 'bg-gradient-to-r from-slate-600 to-slate-700 text-white hover:shadow-lg', badge: 'MOST POPULAR' },
+      business:   { icon: 'ri-briefcase-line',   accent: 'from-yellow-100 to-amber-200', text: 'text-amber-700', btn: 'bg-gradient-to-r from-amber-400 to-yellow-500 text-white hover:shadow-lg', badge: '' },
+      enterprise: { icon: 'ri-vip-diamond-line', accent: 'from-purple-100 to-pink-200', text: 'text-purple-700', btn: 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:shadow-lg', badge: 'BEST VALUE' },
+    };
+    %>
+    <% creditPackages.forEach(pkg => { %>
+      <% const meta = pkgMeta[pkg.id] || pkgMeta.starter; %>
+      <div class="relative bg-white rounded-2xl border-2 <%= pkg.popular ? 'border-pink-400 ring-2 ring-pink-100' : 'border-gray-100' %> overflow-hidden flex flex-col card-hover">
+        <% if (meta.badge) { %>
+          <div class="absolute top-0 right-0 bg-gradient-to-l <%= meta.accent %> text-xs font-bold px-3 py-1 rounded-bl-xl <%= meta.text %>">
+            <%= meta.badge %>
+          </div>
+        <% } %>
+
+        <!-- Header -->
+        <div class="p-6 text-center bg-gradient-to-b <%= meta.accent %> <%= meta.text %>">
+          <div class="w-12 h-12 rounded-xl bg-white/80 flex items-center justify-center mx-auto mb-3 shadow-sm">
+            <i class="<%= meta.icon %> text-2xl <%= meta.text %>"></i>
+          </div>
+          <h4 class="font-bold text-lg mb-1"><%= pkg.name %></h4>
+          <div class="flex items-baseline justify-center gap-1">
+            <span class="text-3xl font-extrabold">₹<%= pkg.price %></span>
+          </div>
+          <p class="text-xs opacity-70 mt-1"><%= pkg.credits.toLocaleString() %> credits</p>
+        </div>
+
+        <!-- Details -->
+        <div class="px-6 py-5 flex-1">
+          <div class="space-y-2 mb-4">
+            <div class="flex items-center gap-2 text-sm text-gray-600">
+              <i class="ri-check-line text-green-500"></i>
+              <span><strong><%= pkg.credits.toLocaleString() %></strong> credits</span>
+            </div>
+            <div class="flex items-center gap-2 text-sm text-gray-600">
+              <i class="ri-check-line text-green-500"></i>
+              <span>Never expires</span>
+            </div>
+          </div>
+          <!-- Services included -->
+          <div class="mb-4">
+            <p class="text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide">All Services Included</p>
+            <div class="flex flex-wrap gap-1.5">
+              <% const svcIcons = {
+                'send_message': 'ri-send-plane-line', 'incoming_message': 'ri-message-3-line', 'ai_reply': 'ri-brain-line',
+                'create_contact': 'ri-contacts-line', 'create_template': 'ri-file-list-line', 'scrape': 'ri-map-pin-line',
+                'schedule_message': 'ri-calendar-schedule-line', 'auto_reply': 'ri-robot-line', 'create_session': 'ri-qr-code-line',
+                'social_automation': 'ri-messenger-line', 'api_key': 'ri-key-line', 'webhook': 'ri-webhook-line',
+                'poll_results': 'ri-bar-chart-box-line', 'create_form': 'ri-survey-line', 'lead_import': 'ri-user-search-line',
+                'youtube_rule': 'ri-youtube-line', 'instagram_rule': 'ri-instagram-line'
+              }; %>
+              <% if (typeof creditConfigs !== 'undefined' && creditConfigs.length > 0) { %>
+                <% creditConfigs.forEach(c => { %>
+                  <span class="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-lg bg-gray-50 text-gray-600 border border-gray-100" title="<%= c.serviceName %>">
+                    <i class="<%= svcIcons[c.serviceKey] || 'ri-apps-line' %> text-pink-500"></i>
+                    <%= c.serviceName %>
+                  </span>
+                <% }); %>
+              <% } else { %>
+                <span class="text-xs text-gray-400">All platform services</span>
+              <% } %>
+            </div>
+          </div>
+
+          <button type="button"
+            onclick="initiatePayment('<%= pkg.id %>', '<%= pkg.name %>', <%= pkg.price %>, <%= pkg.credits %>)"
+            class="w-full py-3 text-sm font-medium rounded-xl transition-all <%= meta.btn %> flex items-center justify-center gap-2">
+            <i class="ri-secure-payment-line"></i> Buy Now
+          </button>
+        </div>
+      </div>
+    <% }); %>
+  </div>
+</div>
+
+<!-- Service Packages -->
+<% if (typeof servicePackages !== 'undefined' && servicePackages.length > 0) { %>
+<% const bundleSvcIcons = {
+  'send_message': 'ri-send-plane-line', 'incoming_message': 'ri-message-3-line', 'ai_reply': 'ri-brain-line',
+  'create_contact': 'ri-contacts-line', 'create_template': 'ri-file-list-line', 'scrape': 'ri-map-pin-line',
+  'schedule_message': 'ri-calendar-schedule-line', 'auto_reply': 'ri-robot-line', 'create_session': 'ri-qr-code-line',
+  'social_automation': 'ri-messenger-line', 'api_key': 'ri-key-line', 'webhook': 'ri-webhook-line',
+  'poll_results': 'ri-bar-chart-box-line', 'create_form': 'ri-survey-line', 'lead_import': 'ri-user-search-line',
+  'youtube_rule': 'ri-youtube-line', 'instagram_rule': 'ri-instagram-line'
+}; %>
+<div class="mb-8">
+  <h3 class="text-lg font-semibold text-gray-900 mb-6 text-center">Service Bundles</h3>
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
+    <% servicePackages.forEach(pkg => { %>
+      <div class="bg-white rounded-2xl border-2 border-gray-100 overflow-hidden card-hover relative">
+        <div class="p-6 text-center bg-gradient-to-b from-pink-50 to-white">
+          <div class="w-12 h-12 rounded-xl bg-white shadow-sm flex items-center justify-center mx-auto mb-3">
+            <i class="<%= bundleSvcIcons[pkg.serviceKey] || 'ri-stack-line' %> text-2xl text-pink-600"></i>
+          </div>
+          <h4 class="font-bold text-lg text-gray-900"><%= pkg.serviceName %></h4>
+          <div class="flex items-baseline justify-center gap-1 mt-2">
+            <span class="text-3xl font-extrabold text-gray-900">₹<%= pkg.price %></span>
+          </div>
+          <p class="text-sm text-gray-500 mt-1"><%= pkg.credits.toLocaleString() %> credits</p>
+        </div>
+        <div class="px-6 py-5">
+          <p class="text-xs text-gray-500 mb-4 text-center"><%= pkg.description || 'Credits for ' + pkg.serviceName %></p>
+          <button type="button"
+            onclick="initiatePayment('service-<%= pkg.id %>', '<%= pkg.serviceName %> Pack', <%= pkg.price %>, <%= pkg.credits %>)"
+            class="w-full py-3 text-center text-sm font-semibold rounded-xl transition-all bg-gradient-to-r from-pink-500 to-pink-600 text-white hover:shadow-lg flex items-center justify-center gap-2">
+            <i class="ri-secure-payment-line"></i> Buy Now
+          </button>
+        </div>
+      </div>
+    <% }); %>
+  </div>
+</div>
+<% } %>
+
+<!-- Credit Transaction History -->
+<div class="bg-white rounded-2xl border border-pink-100 overflow-hidden mb-8">
+  <div class="p-5 border-b border-pink-100 flex items-center justify-between">
+    <h3 class="font-semibold text-gray-900">Recent Credit Transactions</h3>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-gray-50 border-b border-pink-100">
+        <tr>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Date</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Type</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Amount</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Balance After</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Description</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        <% transactions.forEach(tx => { %>
+          <tr class="hover:bg-pink-50/50 transition-colors">
+            <td class="px-6 py-4 text-xs text-gray-500"><%= new Date(tx.createdAt).toLocaleString() %></td>
+            <td class="px-6 py-4">
+              <span class="text-xs px-2.5 py-1 rounded-full
+                <%= tx.type === 'topup' || tx.type === 'add' || tx.amount > 0 ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600' %>">
+                <%= tx.type %>
+              </span>
+            </td>
+            <td class="px-6 py-4 font-medium <%= tx.amount > 0 ? 'text-green-600' : 'text-red-600' %>">
+              <%= tx.amount > 0 ? '+' : '' %>₹<%= parseFloat(tx.amount).toFixed(2) %>
+            </td>
+            <td class="px-6 py-4 text-gray-900">₹<%= parseFloat(tx.balanceAfter).toFixed(2) %></td>
+            <td class="px-6 py-4 text-xs text-gray-500"><%= tx.description || '-' %></td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+  <% if (!transactions || transactions.length === 0) { %>
+    <div class="p-8 text-center">
+      <p class="text-sm text-gray-500">No transactions yet</p>
+    </div>
+  <% } %>
+</div>
+
+<!-- Invoices -->
+<div class="bg-white rounded-2xl border border-pink-100 overflow-hidden">
+  <div class="p-5 border-b border-pink-100">
+    <h3 class="font-semibold text-gray-900">Invoices</h3>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-gray-50 border-b border-pink-100">
+        <tr>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">#</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Package</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Amount</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Status</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Date</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Notes</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        <% invoices.forEach(inv => { %>
+          <tr class="hover:bg-pink-50/50 transition-colors">
+            <td class="px-6 py-4 font-medium text-gray-900">#<%= inv.id %></td>
+            <td class="px-6 py-4 capitalize text-gray-600"><%= inv.planName %></td>
+            <td class="px-6 py-4 font-medium text-gray-900">₹<%= inv.amount %></td>
+            <td class="px-6 py-4">
+              <span class="text-xs px-2.5 py-1 rounded-full
+                <%= inv.status === 'paid' ? 'bg-green-100 text-green-600' : inv.status === 'pending' ? 'bg-yellow-100 text-yellow-600' : 'bg-red-100 text-red-600' %>"><%= inv.status %></span>
+            </td>
+            <td class="px-6 py-4 text-xs text-gray-500"><%= new Date(inv.createdAt).toLocaleDateString() %></td>
+            <td class="px-6 py-4 text-xs text-gray-500"><%= inv.notes || '-' %></td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+  <% if (!invoices || invoices.length === 0) { %>
+    <div class="p-8 text-center">
+      <p class="text-sm text-gray-500">No invoices yet</p>
+    </div>
+  <% } %>
+</div>
+
+<!-- Razorpay Checkout Script -->
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+async function initiatePayment(pkgId, pkgName, amount, credits) {
+  if (!amount || amount <= 0) {
+    alert('Invalid package amount');
+    return;
+  }
+
+  try {
+    // Create order for credits
+    const res = await fetch('/payments/create-order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ packageId: pkgId, packageName: pkgName, amount, credits }),
+    });
+    const data = await res.json();
+
+    if (!data.success) {
+      alert('Error: ' + (data.error || 'Failed to create order'));
+      return;
+    }
+
+    // Validate order data before opening checkout
+    if (!data.order || !data.order.id || !data.order.amount || !data.order.currency) {
+      console.error('[Checkout] Invalid order data:', data);
+      alert('Error: Invalid order data from server. Please try again.');
+      return;
+    }
+
+    const options = {
+      key: data.keyId,
+      amount: data.order.amount,
+      currency: data.order.currency,
+      name: 'ParroByte CRM',
+      description: 'Buy ' + credits + ' credits (' + pkgName + ')',
+      order_id: data.order.id,
+      handler: async function(response) {
+        // Verify payment on server
+        try {
+          const verifyRes = await fetch('/payments/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              invoiceId: data.invoiceId,
+            }),
+          });
+          const verifyData = await verifyRes.json();
+
+          if (verifyData.success) {
+            alert('Payment successful! ' + credits + ' credits have been added to your account.');
+            window.location.reload();
+          } else {
+            alert('Payment verification failed: ' + (verifyData.error || 'Unknown error'));
+          }
+        } catch (err) {
+          alert('Verification error: ' + err.message);
+        }
+      },
+      prefill: {
+        name: data.prefill.name || '',
+        email: data.prefill.email || '',
+        contact: data.prefill.contact || '',
+      },
+      notes: {
+        packageId: pkgId,
+        credits: String(credits),
+      },
+      theme: {
+        color: '#ec4899',
+      },
+      modal: {
+        ondismiss: function() {
+          console.log('Payment modal dismissed');
+        },
+        escape: true,
+        backdropclose: false,
+      },
+      retry: {
+        enabled: true,
+        max_count: 3,
+      },
+    };
+
+    console.log('[Checkout] Opening Razorpay with options:', {
+      key: options.key,
+      order_id: options.order_id,
+      amount: options.amount,
+      currency: options.currency,
+    });
+
+    const rzp = new Razorpay(options);
+    rzp.on('payment.failed', function(response) {
+      console.error('[Checkout] Payment failed:', response.error);
+      alert('Payment failed: ' + (response.error.description || response.error.reason || 'Unknown error') +
+            '\nCode: ' + (response.error.code || 'N/A') +
+            '\nSource: ' + (response.error.source || 'N/A'));
+    });
+    rzp.open();
+
+  } catch (err) {
+    alert('Error initiating payment: ' + err.message);
+  }
+}
+</script>

@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Enterprise Solution - ParroByte CRM</title>
+  <meta name="description" content="ParroByte Enterprise — Custom WhatsApp automation, API integrations, dedicated infrastructure, and white-label solutions for large teams.">
+  <meta name="keywords" content="enterprise WhatsApp CRM, white-label CRM, API integration, dedicated infrastructure, ParroByte Enterprise">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://parrobyte.com/enterprise">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="shortcut icon" href="/favicon.svg">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#ec4899">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <meta property="og:title" content="Enterprise Solution - ParroByte CRM">
+  <meta property="og:description" content="Custom WhatsApp automation and enterprise-grade CRM solutions for large teams.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://parrobyte.com/enterprise">
+  <meta property="og:image" content="https://parrobyte.com/favicon.svg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Enterprise Solution - ParroByte CRM">
+  <meta name="twitter:description" content="Custom WhatsApp automation and enterprise-grade CRM solutions for large teams.">
+  <meta name="twitter:image" content="https://parrobyte.com/favicon.svg">
+  <link rel="stylesheet" href="/css/app.css">
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.1.0/fonts/remixicon.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'Inter', sans-serif; }
+    body {
+      min-height: 100vh;
+      background: #0f0f1a;
+      position: relative;
+      overflow-x: hidden;
+    }
+    /* Animated mesh gradient */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background:
+        radial-gradient(at 20% 20%, rgba(251, 191, 36, 0.15) 0, transparent 50%),
+        radial-gradient(at 80% 80%, rgba(236, 72, 153, 0.1) 0, transparent 50%),
+        radial-gradient(at 50% 50%, rgba(139, 92, 246, 0.08) 0, transparent 60%);
+      animation: meshShift 20s ease-in-out infinite;
+    }
+    @keyframes meshShift {
+      0%, 100% { transform: scale(1) rotate(0deg); }
+      50% { transform: scale(1.1) rotate(2deg); }
+    }
+    /* Floating particles */
+    .particle {
+      position: fixed;
+      border-radius: 50%;
+      background: rgba(251, 191, 36, 0.3);
+      animation: floatUp linear infinite;
+      pointer-events: none;
+      z-index: 1;
+    }
+    @keyframes floatUp {
+      0% { transform: translateY(100vh) scale(0); opacity: 0; }
+      20% { opacity: 1; }
+      80% { opacity: 1; }
+      100% { transform: translateY(-10vh) scale(1); opacity: 0; }
+    }
+    /* Glass card */
+    .glass-card {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(24px) saturate(160%);
+      -webkit-backdrop-filter: blur(24px) saturate(160%);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+    }
+    .glass-input {
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #fff;
+      transition: all 0.3s ease;
+    }
+    .glass-input:focus {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: rgba(251, 191, 36, 0.5);
+      box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.1);
+      outline: none;
+    }
+    .glass-input::placeholder { color: rgba(255, 255, 255, 0.3); }
+    /* Gold glow button */
+    .btn-gold {
+      background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%);
+      box-shadow: 0 4px 20px rgba(251, 191, 36, 0.3), 0 0 0 1px rgba(255,255,255,0.1) inset;
+      transition: all 0.3s ease;
+    }
+    .btn-gold:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(251, 191, 36, 0.5), 0 0 0 1px rgba(255,255,255,0.1) inset;
+    }
+    /* Gold highlight card */
+    .gold-highlight {
+      background: linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(245, 158, 11, 0.1) 100%);
+      border: 1px solid rgba(251, 191, 36, 0.3);
+      box-shadow: 0 0 40px rgba(251, 191, 36, 0.15), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+      position: relative;
+      overflow: hidden;
+    }
+    .gold-highlight::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: conic-gradient(from 0deg, transparent, rgba(251, 191, 36, 0.1), transparent 30%);
+      animation: rotate 8s linear infinite;
+    }
+    @keyframes rotate {
+      100% { transform: rotate(360deg); }
+    }
+    .gold-badge {
+      background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+      color: #000;
+      font-weight: 700;
+    }
+    /* OTP input */
+    .otp-input {
+      width: 48px;
+      height: 56px;
+      text-align: center;
+      font-size: 24px;
+      font-weight: 700;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #fff;
+    }
+    .otp-input:focus {
+      border-color: #fbbf24;
+      box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.2);
+      outline: none;
+    }
+    /* Animations */
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-in {
+      animation: fadeInUp 0.6s ease forwards;
+    }
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #1a1a2e; }
+    ::-webkit-scrollbar-thumb { background: #ec4899; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #db2777; }
+    * { scrollbar-width: thin; scrollbar-color: #ec4899 #1a1a2e; }
+  </style>
+</head>
+<body>
+  <!-- Floating particles -->
+  <div class="particle" style="width:4px;height:4px;left:10%;animation-duration:12s;animation-delay:0s;"></div>
+  <div class="particle" style="width:6px;height:6px;left:25%;animation-duration:15s;animation-delay:2s;"></div>
+  <div class="particle" style="width:3px;height:3px;left:45%;animation-duration:10s;animation-delay:4s;"></div>
+  <div class="particle" style="width:5px;height:5px;left:65%;animation-duration:18s;animation-delay:1s;"></div>
+  <div class="particle" style="width:4px;height:4px;left:80%;animation-duration:14s;animation-delay:3s;"></div>
+  <div class="particle" style="width:3px;height:3px;left:90%;animation-duration:11s;animation-delay:5s;"></div>
+
+  <div class="relative z-10 min-h-screen">
+    <!-- Header -->
+    <header class="border-b border-white/5">
+      <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:linear-gradient(135deg, #fbbf24, #f59e0b)">
+            <i class="ri-vip-crown-fill text-white text-lg"></i>
+          </div>
+          <div>
+            <h1 class="text-white font-bold text-lg">ParroByte CRM</h1>
+            <p class="text-yellow-400 text-[10px] font-semibold tracking-widest uppercase">Enterprise</p>
+          </div>
+        </div>
+        <a href="/" class="text-sm text-gray-400 hover:text-white transition-colors"><i class="ri-arrow-left-line mr-1"></i> Back to Home</a>
+      </div>
+    </header>
+
+    <div class="max-w-6xl mx-auto px-4 py-12">
+      <!-- Hero -->
+      <div class="text-center mb-16 animate-in">
+        <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-yellow-500/30 bg-yellow-500/10 mb-6">
+          <i class="ri-vip-crown-line text-yellow-400"></i>
+          <span class="text-yellow-400 text-xs font-semibold tracking-wide uppercase">Custom Enterprise Solution</span>
+        </div>
+        <h2 class="text-4xl md:text-5xl font-bold text-white mb-4 leading-tight">Scale Your Business<br><span class="text-transparent bg-clip-text" style="background-image:linear-gradient(135deg, #fbbf24, #f59e0b)">Communication</span></h2>
+        <p class="text-gray-400 max-w-xl mx-auto">Custom pricing, unlimited everything, dedicated support. Get a tailored solution for your enterprise needs.</p>
+      </div>
+
+      <div class="grid lg:grid-cols-5 gap-8">
+        <!-- Left: Package Comparison -->
+        <div class="lg:col-span-3 space-y-4">
+          <h3 class="text-white font-semibold text-lg mb-4"><i class="ri-bar-chart-grouped-fill text-yellow-400 mr-2"></i>Compare Packages</h3>
+
+          <!-- Gold Plan (Highlighted) -->
+          <div class="gold-highlight rounded-2xl p-6 animate-in" style="animation-delay:0.1s">
+            <div class="relative z-10">
+              <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-3">
+                  <div class="w-12 h-12 rounded-xl flex items-center justify-center gold-badge">
+                    <i class="ri-vip-crown-fill text-xl"></i>
+                  </div>
+                  <div>
+                    <h4 class="text-white font-bold text-lg">Gold</h4>
+                    <p class="text-yellow-400 text-xs font-medium">Most Popular</p>
+                  </div>
+                </div>
+                <div class="text-right">
+                  <p class="text-2xl font-bold text-white">$29<span class="text-sm font-normal text-gray-400">/mo</span></p>
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-2 mb-4">
+                <div class="flex items-center gap-2 text-sm text-gray-300"><i class="ri-check-line text-yellow-400"></i> 10 WhatsApp Sessions</div>
+                <div class="flex items-center gap-2 text-sm text-gray-300"><i class="ri-check-line text-yellow-400"></i> 10,000 Contacts</div>
+                <div class="flex items-center gap-2 text-sm text-gray-300"><i class="ri-check-line text-yellow-400"></i> 100 Templates</div>
+                <div class="flex items-center gap-2 text-sm text-gray-300"><i class="ri-check-line text-yellow-400"></i> 100 Scrape Records</div>
+                <div class="flex items-center gap-2 text-sm text-gray-300"><i class="ri-check-line text-yellow-400"></i> AI Auto-Reply</div>
+                <div class="flex items-center gap-2 text-sm text-gray-300"><i class="ri-check-line text-yellow-400"></i> Bulk Messaging</div>
+              </div>
+              <div class="gold-badge inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs">
+                <i class="ri-star-fill"></i> RECOMMENDED
+              </div>
+            </div>
+          </div>
+
+          <!-- Enterprise Package -->
+          <div class="glass-card rounded-2xl p-6 animate-in" style="animation-delay:0.2s">
+            <div class="flex items-center justify-between mb-4">
+              <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-xl flex items-center justify-center" style="background:linear-gradient(135deg, #a78bfa, #8b5cf6)">
+                  <i class="ri-building-4-fill text-white text-xl"></i>
+                </div>
+                <div>
+                  <h4 class="text-white font-bold text-lg">Enterprise</h4>
+                  <p class="text-purple-400 text-xs font-medium">Custom Solution</p>
+                </div>
+              </div>
+              <div class="text-right">
+                <p class="text-2xl font-bold text-white">Custom</p>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-2 mb-4">
+              <div class="flex items-center gap-2 text-sm text-gray-300"><i class="ri-check-line text-purple-400"></i> Unlimited Sessions</div>
+              <div class="flex items-center gap-2 text-sm text-gray-300"><i class="ri-check-line text-purple-400"></i> Unlimited Contacts</div>
+              <div class="flex items-center gap-2 text-sm text-gray-300"><i class="ri-check-line text-purple-400"></i> Unlimited Templates</div>
+              <div class="flex items-center gap-2 text-sm text-gray-300"><i class="ri-check-line text-purple-400"></i> Unlimited Scrapes</div>
+              <div class="flex items-center gap-2 text-sm text-gray-300"><i class="ri-check-line text-purple-400"></i> Dedicated Support</div>
+              <div class="flex items-center gap-2 text-sm text-gray-300"><i class="ri-check-line text-purple-400"></i> Custom Integrations</div>
+              <div class="flex items-center gap-2 text-sm text-gray-300"><i class="ri-check-line text-purple-400"></i> SLA Guarantee</div>
+              <div class="flex items-center gap-2 text-sm text-gray-300"><i class="ri-check-line text-purple-400"></i> On-Premise Option</div>
+            </div>
+            <p class="text-xs text-gray-500">Contact us for a custom quote tailored to your organization.</p>
+          </div>
+        </div>
+
+        <!-- Right: Enquiry Form -->
+        <div class="lg:col-span-2 animate-in" style="animation-delay:0.3s">
+          <div class="glass-card rounded-2xl p-6 sticky top-6">
+            <div class="text-center mb-6">
+              <div class="w-14 h-14 rounded-2xl mx-auto mb-3 flex items-center justify-center" style="background:linear-gradient(135deg, #a78bfa, #8b5cf6)">
+                <i class="ri-building-4-line text-white text-2xl"></i>
+              </div>
+              <h3 class="text-white font-bold text-lg">Get Enterprise Quote</h3>
+              <p class="text-gray-400 text-xs mt-1">We'll contact you within 24 hours</p>
+            </div>
+
+            <!-- Step 1: Enquiry Form -->
+            <form id="enquiryForm" class="space-y-4">
+              <div>
+                <label class="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wide">Company Name *</label>
+                <input type="text" name="companyName" required class="w-full px-4 py-3 rounded-xl glass-input text-sm" placeholder="Acme Inc.">
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wide">Employee Count *</label>
+                  <select name="employeeCount" required class="w-full px-4 py-3 rounded-xl glass-input text-sm bg-transparent">
+                    <option value="" class="bg-gray-900">Select</option>
+                    <option value="1-10" class="bg-gray-900">1-10</option>
+                    <option value="11-50" class="bg-gray-900">11-50</option>
+                    <option value="51-200" class="bg-gray-900">51-200</option>
+                    <option value="201-500" class="bg-gray-900">201-500</option>
+                    <option value="501-1000" class="bg-gray-900">501-1000</option>
+                    <option value="1000+" class="bg-gray-900">1000+</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wide">Business Type *</label>
+                  <select name="businessType" required class="w-full px-4 py-3 rounded-xl glass-input text-sm bg-transparent">
+                    <option value="" class="bg-gray-900">Select</option>
+                    <option value="E-commerce" class="bg-gray-900">E-commerce</option>
+                    <option value="Healthcare" class="bg-gray-900">Healthcare</option>
+                    <option value="Education" class="bg-gray-900">Education</option>
+                    <option value="Real Estate" class="bg-gray-900">Real Estate</option>
+                    <option value="Finance" class="bg-gray-900">Finance</option>
+                    <option value="Technology" class="bg-gray-900">Technology</option>
+                    <option value="Manufacturing" class="bg-gray-900">Manufacturing</option>
+                    <option value="Retail" class="bg-gray-900">Retail</option>
+                    <option value="Other" class="bg-gray-900">Other</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wide">Business Email *</label>
+                <input type="email" name="email" required class="w-full px-4 py-3 rounded-xl glass-input text-sm" placeholder="ceo@company.com">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wide">Phone Number *</label>
+                <div class="flex gap-2">
+                  <select name="countryCode" class="w-24 px-3 py-3 rounded-xl glass-input text-sm bg-transparent">
+                    <option value="+91" class="bg-gray-900">+91</option>
+                    <option value="+1" class="bg-gray-900">+1</option>
+                    <option value="+44" class="bg-gray-900">+44</option>
+                    <option value="+971" class="bg-gray-900">+971</option>
+                    <option value="+65" class="bg-gray-900">+65</option>
+                    <option value="+61" class="bg-gray-900">+61</option>
+                  </select>
+                  <input type="tel" name="phone" required class="flex-1 px-4 py-3 rounded-xl glass-input text-sm" placeholder="9876543210">
+                </div>
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wide">Requirements</label>
+                <textarea name="requirements" rows="3" class="w-full px-4 py-3 rounded-xl glass-input text-sm resize-none" placeholder="Tell us about your requirements..."></textarea>
+              </div>
+              <button type="submit" class="w-full py-3.5 rounded-xl text-white text-sm font-semibold btn-gold flex items-center justify-center gap-2">
+                <span id="btnText">Send Enquiry</span>
+                <div id="btnLoader" class="hidden w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              </button>
+            </form>
+
+            <!-- Step 2: OTP Verification -->
+            <div id="otpSection" class="hidden">
+              <div class="text-center mb-6">
+                <div class="w-14 h-14 rounded-full bg-yellow-500/20 flex items-center justify-center mx-auto mb-3">
+                  <i class="ri-mail-check-line text-yellow-400 text-2xl"></i>
+                </div>
+                <h4 class="text-white font-bold">Verify Your Email</h4>
+                <p class="text-gray-400 text-xs mt-1">OTP sent to <span id="otpEmail" class="text-yellow-400"></span></p>
+              </div>
+              <div class="flex justify-center gap-3 mb-4">
+                <input type="text" maxlength="1" class="otp-input" data-index="0" oninput="handleOtpInput(this, 0)" onkeydown="handleOtpKeydown(event, 0)">
+                <input type="text" maxlength="1" class="otp-input" data-index="1" oninput="handleOtpInput(this, 1)" onkeydown="handleOtpKeydown(event, 1)">
+                <input type="text" maxlength="1" class="otp-input" data-index="2" oninput="handleOtpInput(this, 2)" onkeydown="handleOtpKeydown(event, 2)">
+                <input type="text" maxlength="1" class="otp-input" data-index="3" oninput="handleOtpInput(this, 3)" onkeydown="handleOtpKeydown(event, 3)">
+                <input type="text" maxlength="1" class="otp-input" data-index="4" oninput="handleOtpInput(this, 4)" onkeydown="handleOtpKeydown(event, 4)">
+                <input type="text" maxlength="1" class="otp-input" data-index="5" oninput="handleOtpInput(this, 5)" onkeydown="handleOtpKeydown(event, 5)">
+              </div>
+              <button onclick="verifyOtp()" class="w-full py-3 rounded-xl btn-gold text-white text-sm font-semibold mb-3">
+                <span id="verifyBtnText">Verify OTP</span>
+              </button>
+              <p class="text-center text-xs text-gray-500">
+                Didn't receive? <button onclick="resendOtp()" class="text-yellow-400 hover:text-yellow-300 font-medium">Resend OTP</button>
+              </p>
+              <p id="otpMessage" class="text-center text-xs mt-2 hidden"></p>
+            </div>
+
+            <!-- Step 3: Success -->
+            <div id="successSection" class="hidden text-center py-6">
+              <div class="w-20 h-20 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
+                <i class="ri-check-line text-green-400 text-4xl"></i>
+              </div>
+              <h4 class="text-white font-bold text-xl mb-2">Thank You!</h4>
+              <p class="text-gray-400 text-sm mb-4">Your enquiry has been verified. Our enterprise team will contact you within 24 hours.</p>
+              <div class="glass-card rounded-xl p-4 inline-block">
+                <p class="text-xs text-gray-400">Reference ID</p>
+                <p class="text-lg font-mono font-bold text-yellow-400" id="refId">-</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Features -->
+      <div class="mt-16 mb-8">
+        <h3 class="text-center text-white font-bold text-2xl mb-8">Why Enterprise?</h3>
+        <div class="grid md:grid-cols-4 gap-6">
+          <div class="glass-card rounded-2xl p-6 text-center">
+            <div class="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center mx-auto mb-3"><i class="ri-customer-service-2-line text-purple-400 text-xl"></i></div>
+            <h4 class="text-white font-semibold text-sm mb-1">24/7 Dedicated Support</h4>
+            <p class="text-gray-500 text-xs">Priority support with a dedicated account manager</p>
+          </div>
+          <div class="glass-card rounded-2xl p-6 text-center">
+            <div class="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center mx-auto mb-3"><i class="ri-shield-check-line text-blue-400 text-xl"></i></div>
+            <h4 class="text-white font-semibold text-sm mb-1">SLA Guarantee</h4>
+            <p class="text-gray-500 text-xs">99.9% uptime with enterprise SLA</p>
+          </div>
+          <div class="glass-card rounded-2xl p-6 text-center">
+            <div class="w-12 h-12 rounded-xl bg-green-500/20 flex items-center justify-center mx-auto mb-3"><i class="ri-code-box-line text-green-400 text-xl"></i></div>
+            <h4 class="text-white font-semibold text-sm mb-1">Custom Integrations</h4>
+            <p class="text-gray-500 text-xs">API access and custom development</p>
+          </div>
+          <div class="glass-card rounded-2xl p-6 text-center">
+            <div class="w-12 h-12 rounded-xl bg-pink-500/20 flex items-center justify-center mx-auto mb-3"><i class="ri-server-line text-pink-400 text-xl"></i></div>
+            <h4 class="text-white font-semibold text-sm mb-1">On-Premise Option</h4>
+            <p class="text-gray-500 text-xs">Deploy on your own infrastructure</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <footer class="border-t border-white/5 pt-8 text-center">
+        <p class="text-gray-600 text-xs">Powered by ParroByte CRM Enterprise Solutions</p>
+      </footer>
+    </div>
+  </div>
+
+  <script>
+  let enquiryId = null;
+
+  // Form submission
+  document.getElementById('enquiryForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const btnText = document.getElementById('btnText');
+    const btnLoader = document.getElementById('btnLoader');
+    btnText.textContent = 'Sending...';
+    btnLoader.classList.remove('hidden');
+
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData.entries());
+
+    try {
+      const res = await fetch('/enterprise/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      const result = await res.json();
+
+      if (result.success) {
+        enquiryId = result.enquiryId;
+        document.getElementById('otpEmail').textContent = data.email;
+        document.getElementById('enquiryForm').classList.add('hidden');
+        document.getElementById('otpSection').classList.remove('hidden');
+        // Focus first OTP input
+        document.querySelector('.otp-input[data-index="0"]').focus();
+      } else {
+        alert(result.error || 'Failed to submit');
+      }
+    } catch (err) {
+      alert('Network error');
+    }
+
+    btnText.textContent = 'Send Enquiry';
+    btnLoader.classList.add('hidden');
+  });
+
+  // OTP input handling
+  function handleOtpInput(input, index) {
+    input.value = input.value.replace(/[^0-9]/g, '');
+    if (input.value && index < 5) {
+      document.querySelector('.otp-input[data-index="' + (index + 1) + '"]').focus();
+    }
+  }
+  function handleOtpKeydown(e, index) {
+    if (e.key === 'Backspace' && !e.target.value && index > 0) {
+      document.querySelector('.otp-input[data-index="' + (index - 1) + '"]').focus();
+    }
+  }
+
+  function getOtpValue() {
+    let otp = '';
+    document.querySelectorAll('.otp-input').forEach(function(input) {
+      otp += input.value;
+    });
+    return otp;
+  }
+
+  async function verifyOtp() {
+    const otp = getOtpValue();
+    if (otp.length !== 6) {
+      showOtpMessage('Please enter all 6 digits', 'red');
+      return;
+    }
+
+    document.getElementById('verifyBtnText').textContent = 'Verifying...';
+
+    try {
+      const res = await fetch('/enterprise/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enquiryId, otp }),
+      });
+      const result = await res.json();
+
+      if (result.success) {
+        document.getElementById('otpSection').classList.add('hidden');
+        document.getElementById('successSection').classList.remove('hidden');
+        document.getElementById('refId').textContent = 'ENT-' + String(enquiryId).padStart(4, '0');
+      } else {
+        showOtpMessage(result.error, 'red');
+      }
+    } catch (err) {
+      showOtpMessage('Verification failed', 'red');
+    }
+
+    document.getElementById('verifyBtnText').textContent = 'Verify OTP';
+  }
+
+  async function resendOtp() {
+    try {
+      const res = await fetch('/enterprise/resend-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enquiryId }),
+      });
+      const result = await res.json();
+      showOtpMessage(result.message, 'green');
+    } catch (err) {
+      showOtpMessage('Failed to resend', 'red');
+    }
+  }
+
+  function showOtpMessage(msg, color) {
+    const el = document.getElementById('otpMessage');
+    el.textContent = msg;
+    el.className = 'text-center text-xs mt-2 ' + (color === 'red' ? 'text-red-400' : 'text-green-400');
+    el.classList.remove('hidden');
+  }
+  </script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('/sw.js')
+          .then(function(reg) { console.log('[PWA] SW registered'); })
+          .catch(function(err) { console.log('[PWA] SW registration failed', err); });
+      });
+    }
+  </script>
+</body>
+</html>

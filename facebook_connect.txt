@@ -1,0 +1,101 @@
+User clicks "Connect with Facebook"
+  ↓
+Redirect to facebook.com/v18.0/dialog/oauth
+  ↓
+User grants permissions (pages_messaging, etc.)
+  ↓
+Callback receives authorization code
+  ↓
+Exchange code for user access token
+  ↓
+Fetch user's Facebook Pages
+  ↓
+User selects which Page to connect
+  ↓
+Subscribe page to messaging webhooks
+  ↓
+Store page token in social_accounts table
+  ↓
+Incoming FB messages → saved as Leads
+
+FACEBOOK_APP_ID=your_app_id
+FACEBOOK_APP_SECRET=your_app_secret
+FACEBOOK_WEBHOOK_VERIFY_TOKEN=parrobyte_crm_verify
+APP_URL=https://yourdomain.com
+
+--------------------------------------------------
+
+• All the fixes have been applied successfully. Here's a summary:
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  Fixes Applied
+  1. YouTube Comment Auto-Reply Not Working
+  Root causes found and fixed:
+  • HTML in comment text: YouTube's textDisplay field contains HTML (e.g., <a href="...">website</a> for auto-linked words). Now uses textOriginal (plain text) and strips HTML as fallb
+    k.
+  • No visibility into processing: Added a detailed logs array to processCommentsForUser so you can see exactly why each comment was skipped, matched, or failed.
+  • Added debugging tools to the UI:
+    • "Test Your Rules" — type any sample comment text and see which rules match (including whether the rule is active or paused)
+    • "Debug Comments" — enter a YouTube Video ID to fetch raw comments and see the cleaned text the system uses for matching
+    • "Last Run Log" — after clicking "Process Now", a color-coded log shows every decision made
+  2. CSP Image Blocking (Already Fixed)
+  Your helmet config already has https://i.ytimg.com and https://graph.facebook.com in img-src.
+  3. Instagram Auto-Reply Debugging
+  Same improvements applied to Instagram:
+  • Detailed process logs after "Process Now"
+  • "Test Your Rules" section
+  • "Debug Comments" section to fetch raw comments from any post
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  Instagram Configuration Steps
+  To use Instagram automation, you must have an Instagram Business or Creator account connected to a Facebook Page. Personal accounts won't work with the Graph API.
+  Step 1: Create a Facebook App
+  1. Go to Meta for Developers
+  2. Click My Apps → Create App
+  3. Select "Other" → "Business" app type
+  4. Give it a name (e.g., "ParroByte CRM")
+  Step 2: Add Instagram Products
+  1. In your app's dashboard, click Add Product
+  2. Add Instagram Basic Display (for authentication)
+  3. Add Instagram Graph API (for reading comments and replying)
+  Step 3: Get App Credentials
+  1. Go to Settings → Basic
+  2. Copy App ID and App Secret
+  3. Add them to your .env file:
+     FACEBOOK_APP_ID=your_app_id
+     FACEBOOK_APP_SECRET=your_app_secret
+     INSTAGRAM_REDIRECT_URI=http://localhost:3000/instagram/oauth/callback
+  Step 4: Configure OAuth Redirect URI
+  1. Go to Products → Facebook Login → Settings (or Instagram Basic Display → Basic Display)
+  2. Add your redirect URI exactly as:
+     http://localhost:3000/instagram/oauth/callback
+  3. Save changes
+  Step 5: Convert Instagram to Business/Creator Account
+  1. Open Instagram app → Go to your profile
+  2. Menu → Settings → Account → Switch to Professional Account
+  3. Choose Business or Creator
+  4. Connect it to a Facebook Page (create one if needed)
+  Step 6: Add Testers (if app is in Development mode)
+  1. In your Facebook App, go to Roles → Testers
+  2. Add your Instagram account's Facebook profile as a Tester
+  3. Accept the invitation from your Facebook notifications
+  Step 7: Required Permissions
+  The app requests these scopes automatically:
+  • instagram_basic — read your media
+  • instagram_manage_comments — read and reply to comments
+  • pages_read_engagement — access pages connected to your IG account
+  Step 8: Connect in the CRM
+  1. Restart your server (npm run dev)
+  2. Go to Instagram Automation page
+  3. Click Connect Instagram
+  4. Log in with the Facebook account that owns the Page connected to your Instagram Business account
+  5. Grant all permissions
+  ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  Quick Debugging Checklist for YouTube
+  If comments with "website" still don't trigger replies:
+  1. Click "Test Your Rules" on the YouTube page, type website, and verify your rule shows MATCH
+  2. Click "Debug Comments", enter a video ID, and check the "clean text" column — it should show website without HTML tags
+  3. Check the "Last Run Log" after clicking "Process Now" — look for:
+    • info — how many comments were found
+    • skip — reasons for skipping (own comment, already replied, no rule matched)
+    • match / success — when a reply was sent
+  4. Make sure your rule is Active (green badge), not Paused
+

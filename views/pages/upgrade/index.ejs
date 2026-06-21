@@ -1,0 +1,205 @@
+<div class="max-w-6xl mx-auto">
+  <!-- Header -->
+  <div class="text-center mb-8">
+    <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-pink-100 to-pink-200 flex items-center justify-center mx-auto mb-4">
+      <i class="<%= featureMeta.icon %> text-3xl text-pink-600"></i>
+    </div>
+    <h2 class="text-2xl font-bold text-gray-900 mb-2"><%= featureMeta.label %></h2>
+    <p class="text-gray-500 max-w-md mx-auto"><%= featureMeta.desc %></p>
+    <div class="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-yellow-50 border border-yellow-200 rounded-xl text-sm text-yellow-700">
+      <i class="ri-lock-line"></i>
+      <span>Not available on your <span class="font-semibold capitalize"><%= userPlan %></span> plan</span>
+    </div>
+  </div>
+
+  <!-- Plan Comparison -->
+  <div class="mb-6">
+    <h3 class="text-lg font-semibold text-gray-900 mb-4 text-center">Choose a plan that includes <%= featureMeta.label %></h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+      <%
+      const upMeta = {
+        free:    { icon: 'ri-seedling-line',    gradient: 'from-gray-50 to-gray-100', border: 'border-gray-200', btn: 'bg-gray-900 text-white hover:bg-gray-800', badge: '' },
+        silver:  { icon: 'ri-medal-line',       gradient: 'from-slate-50 to-slate-100', border: 'border-slate-200', btn: 'bg-gradient-to-r from-slate-600 to-slate-700 text-white hover:shadow-lg', badge: '' },
+        gold:    { icon: 'ri-vip-crown-line',   gradient: 'from-amber-50 to-yellow-100', border: 'border-amber-200', btn: 'bg-gradient-to-r from-amber-400 to-yellow-500 text-white hover:shadow-lg', badge: 'MOST POPULAR' },
+        platinum:{ icon: 'ri-vip-diamond-line', gradient: 'from-purple-50 to-pink-100', border: 'border-purple-200', btn: 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:shadow-lg', badge: 'BEST VALUE' },
+      };
+      %>
+      <% plans.forEach(plan => { %>
+        <% const meta = upMeta[plan.name] || upMeta.free; %>
+        <div class="bg-white rounded-2xl border-2 <%= plan.isCurrent ? 'border-pink-400 ring-2 ring-pink-100' : plan.hasFeature ? meta.border : 'border-gray-200 opacity-60' %> overflow-hidden flex flex-col">
+          <!-- Header -->
+          <div class="p-5 bg-gradient-to-b <%= meta.gradient %> text-center">
+            <% if (meta.badge && !plan.isCurrent) { %>
+              <span class="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/80 text-gray-700 mb-2"><%= meta.badge %></span>
+            <% } %>
+            <% if (plan.isCurrent) { %>
+              <span class="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full bg-pink-500 text-white mb-2">CURRENT</span>
+            <% } %>
+            <div class="w-10 h-10 rounded-lg bg-white shadow-sm flex items-center justify-center mx-auto mb-2">
+              <i class="<%= meta.icon %> text-xl <%= plan.hasFeature ? 'text-pink-600' : 'text-gray-400' %>"></i>
+            </div>
+            <h4 class="font-bold text-gray-900"><%= plan.displayName %></h4>
+            <div class="flex items-baseline justify-center gap-1 mt-1">
+              <span class="text-2xl font-bold text-gray-900">$<%= plan.price %></span>
+              <span class="text-sm text-gray-500">/<%= plan.period %></span>
+            </div>
+          </div>
+
+          <!-- Feature Status -->
+          <div class="p-5 flex-1">
+            <div class="flex items-center gap-3 mb-4 p-3 rounded-xl <%= plan.hasFeature ? 'bg-green-50 border border-green-100' : 'bg-red-50 border border-red-100' %>">
+              <div class="w-10 h-10 rounded-full <%= plan.hasFeature ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-500' %> flex items-center justify-center flex-shrink-0">
+                <i class="<%= plan.hasFeature ? 'ri-check-line' : 'ri-close-line' %> text-lg"></i>
+              </div>
+              <div>
+                <p class="text-sm font-medium <%= plan.hasFeature ? 'text-green-700' : 'text-red-700' %>">
+                  <%= featureMeta.label %>
+                </p>
+                <p class="text-xs <%= plan.hasFeature ? 'text-green-600' : 'text-red-500' %>">
+                  <%= plan.hasFeature ? 'Included in this plan' : 'Not available' %>
+                </p>
+              </div>
+            </div>
+
+            <!-- Plan Limits -->
+            <div class="space-y-2 text-sm text-gray-600 mb-4">
+              <div class="flex justify-between"><span><i class="ri-qr-code-line mr-1 text-pink-400"></i>Sessions</span><span class="font-medium"><%= plan.maxSessions %></span></div>
+              <div class="flex justify-between"><span><i class="ri-contacts-line mr-1 text-pink-400"></i>Contacts</span><span class="font-medium"><%= plan.maxContacts.toLocaleString() %></span></div>
+              <div class="flex justify-between"><span><i class="ri-file-list-line mr-1 text-pink-400"></i>Templates</span><span class="font-medium"><%= plan.maxTemplates.toLocaleString() %></span></div>
+              <div class="flex justify-between"><span><i class="ri-map-pin-line mr-1 text-pink-400"></i>Scrape</span><span class="font-medium"><%= plan.maxScrapeRecords %></span></div>
+            </div>
+
+            <!-- CTA -->
+            <% if (plan.isCurrent) { %>
+              <button disabled class="w-full py-2.5 text-sm font-medium text-pink-600 bg-pink-50 rounded-xl cursor-default flex items-center justify-center gap-2">
+                <i class="ri-check-double-line"></i> Your Current Plan
+              </button>
+            <% } else if (plan.hasFeature) { %>
+              <button type="button"
+                onclick="initiatePayment('<%= plan.name %>', '<%= plan.displayName %>', <%= plan.price %>)"
+                class="w-full py-2.5 text-sm font-medium rounded-xl transition-all <%= meta.btn %> flex items-center justify-center gap-2">
+                <i class="ri-secure-payment-line"></i> Pay & Upgrade
+              </button>
+            <% } else { %>
+              <button disabled class="w-full py-2.5 text-sm font-medium text-gray-400 bg-gray-100 rounded-xl cursor-not-allowed flex items-center justify-center gap-2">
+                <i class="ri-lock-line"></i> Does not include this feature
+              </button>
+            <% } %>
+          </div>
+        </div>
+      <% }); %>
+    </div>
+  </div>
+
+  <!-- Back or Browse all plans -->
+  <div class="flex items-center justify-center gap-4">
+    <a href="/billing" class="px-6 py-2.5 text-sm font-medium text-pink-600 border border-pink-200 rounded-xl hover:bg-pink-50 transition-colors flex items-center gap-2">
+      <i class="ri-list-check"></i> View All Plans
+    </a>
+    <a href="/dashboard" class="px-6 py-2.5 text-sm font-medium text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors flex items-center gap-2">
+      <i class="ri-arrow-left-line"></i> Back to Dashboard
+    </a>
+  </div>
+</div>
+
+<!-- Razorpay Checkout Script -->
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+async function initiatePayment(planName, planDisplayName, amount) {
+  if (!amount || amount <= 0) {
+    alert('This plan is free. No payment required.');
+    return;
+  }
+
+  try {
+    const res = await fetch('/payments/create-order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ planName }),
+    });
+    const data = await res.json();
+
+    if (!data.success) {
+      alert('Error: ' + (data.error || 'Failed to create order'));
+      return;
+    }
+
+    // Validate order data before opening checkout
+    if (!data.order || !data.order.id || !data.order.amount || !data.order.currency) {
+      console.error('[Checkout] Invalid order data:', data);
+      alert('Error: Invalid order data from server. Please try again.');
+      return;
+    }
+
+    const options = {
+      key: data.keyId,
+      amount: data.order.amount,
+      currency: data.order.currency,
+      name: 'ParroByte CRM',
+      description: 'Upgrade to ' + planDisplayName,
+      order_id: data.order.id,
+      handler: async function(response) {
+        try {
+          const verifyRes = await fetch('/payments/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              invoiceId: data.invoiceId,
+            }),
+          });
+          const verifyData = await verifyRes.json();
+
+          if (verifyData.success) {
+            alert('Payment successful! Your plan has been upgraded.');
+            window.location.href = '/billing';
+          } else {
+            alert('Payment verification failed: ' + (verifyData.error || 'Unknown error'));
+          }
+        } catch (err) {
+          alert('Verification error: ' + err.message);
+        }
+      },
+      prefill: {
+        name: data.prefill.name || '',
+        email: data.prefill.email || '',
+        contact: data.prefill.contact || '',
+      },
+      notes: { plan: planName },
+      theme: { color: '#ec4899' },
+      modal: {
+        ondismiss: function() {
+          console.log('Payment modal dismissed');
+        },
+        escape: true,
+        backdropclose: false,
+      },
+      retry: {
+        enabled: true,
+        max_count: 3,
+      },
+    };
+
+    console.log('[Checkout] Opening Razorpay with options:', {
+      key: options.key,
+      order_id: options.order_id,
+      amount: options.amount,
+      currency: options.currency,
+    });
+
+    const rzp = new Razorpay(options);
+    rzp.on('payment.failed', function(response) {
+      console.error('[Checkout] Payment failed:', response.error);
+      alert('Payment failed: ' + (response.error.description || response.error.reason || 'Unknown error') +
+            '\nCode: ' + (response.error.code || 'N/A') +
+            '\nSource: ' + (response.error.source || 'N/A'));
+    });
+    rzp.open();
+
+  } catch (err) {
+    alert('Error initiating payment: ' + err.message);
+  }
+}
+</script>

@@ -1,0 +1,627 @@
+<div class="mb-6">
+  <h2 class="text-xl font-bold text-gray-900">Email Automation</h2>
+  <p class="text-sm text-gray-500">Send emails, create templates, and set up auto-replies</p>
+</div>
+
+<!-- Config Banner -->
+<% if (!config) { %>
+  <div class="bg-amber-50 border border-amber-200 rounded-2xl p-6 mb-6 flex items-center gap-4">
+    <div class="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+      <i class="ri-mail-settings-line text-amber-600 text-xl"></i>
+    </div>
+    <div class="flex-1">
+      <h3 class="font-semibold text-amber-800">Email Not Configured</h3>
+      <p class="text-sm text-amber-600">Set up your SMTP settings to start sending emails</p>
+    </div>
+    <button onclick="showTab('config')" class="px-5 py-2.5 bg-amber-600 text-white text-sm font-medium rounded-xl hover:bg-amber-700 transition-colors">Configure</button>
+  </div>
+<% } else { %>
+  <div class="bg-green-50 border border-green-200 rounded-2xl p-4 mb-6 flex items-center gap-4">
+    <div class="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center flex-shrink-0">
+      <i class="ri-mail-check-line text-green-600 text-lg"></i>
+    </div>
+    <div class="flex-1">
+      <p class="text-sm text-green-700 font-medium"><%= config.fromName || config.emailUser %> &lt;<%= config.fromEmail || config.emailUser %>&gt;</p>
+      <p class="text-xs text-green-600"><%= config.smtpHost %>:<%= config.smtpPort %></p>
+    </div>
+    <button onclick="showTab('config')" class="px-4 py-2 text-sm text-green-700 bg-green-100 rounded-lg hover:bg-green-200 transition-colors">Edit</button>
+  </div>
+<% } %>
+
+<!-- Tabs -->
+<div class="flex gap-2 mb-6 overflow-x-auto pb-1">
+  <button onclick="showTab('compose')" id="tab-compose" class="tab-btn px-5 py-2.5 text-sm font-medium rounded-xl transition-colors bg-pink-600 text-white">
+    <i class="ri-mail-send-line"></i> Compose
+  </button>
+  <button onclick="showTab('templates')" id="tab-templates" class="tab-btn px-5 py-2.5 text-sm font-medium rounded-xl transition-colors bg-white border border-pink-200 text-pink-600 hover:bg-pink-50">
+    <i class="ri-file-list-line"></i> Templates
+  </button>
+  <button onclick="showTab('history')" id="tab-history" class="tab-btn px-5 py-2.5 text-sm font-medium rounded-xl transition-colors bg-white border border-pink-200 text-pink-600 hover:bg-pink-50">
+    <i class="ri-history-line"></i> History
+  </button>
+  <button onclick="showTab('scheduled')" id="tab-scheduled" class="tab-btn px-5 py-2.5 text-sm font-medium rounded-xl transition-colors bg-white border border-pink-200 text-pink-600 hover:bg-pink-50">
+    <i class="ri-calendar-schedule-line"></i> Scheduled
+  </button>
+  <button onclick="showTab('automation')" id="tab-automation" class="tab-btn px-5 py-2.5 text-sm font-medium rounded-xl transition-colors bg-white border border-pink-200 text-pink-600 hover:bg-pink-50">
+    <i class="ri-robot-line"></i> Auto-Reply
+  </button>
+  <button onclick="showTab('config')" id="tab-config" class="tab-btn px-5 py-2.5 text-sm font-medium rounded-xl transition-colors bg-white border border-pink-200 text-pink-600 hover:bg-pink-50">
+    <i class="ri-settings-3-line"></i> Settings
+  </button>
+</div>
+
+<!-- Compose Tab -->
+<div id="panel-compose" class="tab-panel">
+  <div class="grid lg:grid-cols-3 gap-6">
+    <!-- Compose Form -->
+    <div class="lg:col-span-2 bg-white rounded-2xl border border-pink-100 p-6">
+      <h3 class="font-semibold text-gray-900 mb-4">Compose Email</h3>
+      <form action="/email/send" method="POST" enctype="multipart/form-data" id="composeForm">
+        <div class="grid md:grid-cols-2 gap-4 mb-4">
+          <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">To</label>
+            <input type="email" name="to" required placeholder="recipient@example.com" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-200">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Subject</label>
+            <input type="text" name="subject" required placeholder="Email subject" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-200">
+          </div>
+        </div>
+        <div class="mb-4">
+          <label class="block text-xs font-medium text-gray-700 mb-1">Message</label>
+          <textarea name="body" rows="8" required placeholder="Write your message... Use {{name}}, {{email}}, {{phone}} for personalization" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-200 resize-none font-mono"></textarea>
+        </div>
+        <div class="flex items-center gap-4 mb-4">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" name="isHtml" value="true" class="rounded border-pink-200 text-pink-600 focus:ring-pink-500">
+            <span class="text-sm text-gray-700">Send as HTML</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="file" name="attachments" multiple class="text-xs text-gray-600">
+          </label>
+        </div>
+        <div class="grid md:grid-cols-2 gap-4 mb-4">
+          <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Schedule Send (optional)</label>
+            <input type="datetime-local" name="scheduledAt" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-200">
+            <p class="text-[10px] text-gray-400 mt-1">Leave empty to send immediately</p>
+          </div>
+        </div>
+        <div class="flex gap-3">
+          <button type="submit" class="px-6 py-2.5 btn-pink text-white text-sm font-medium rounded-xl hover:shadow-lg transition-all flex items-center gap-2">
+            <i class="ri-send-plane-line"></i> Send Email
+          </button>
+          <button type="button" onclick="openBulkModal()" class="px-6 py-2.5 bg-white border border-pink-200 text-pink-600 text-sm font-medium rounded-xl hover:bg-pink-50 transition-all flex items-center gap-2">
+            <i class="ri-mail-volume-line"></i> Bulk Send
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="space-y-4">
+      <div class="bg-white rounded-2xl border border-pink-100 p-5">
+        <h4 class="font-semibold text-gray-900 mb-3 text-sm">Email Stats</h4>
+        <div class="space-y-3">
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-500">Sent</span>
+            <span class="font-medium text-gray-900"><%= messages.filter(m => m.direction === 'outbound' && m.status === 'sent').length %></span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-500">Received</span>
+            <span class="font-medium text-gray-900"><%= messages.filter(m => m.direction === 'inbound').length %></span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-500">Failed</span>
+            <span class="font-medium text-red-600"><%= messages.filter(m => m.status === 'failed').length %></span>
+          </div>
+        </div>
+      </div>
+      <div class="bg-gradient-to-br from-pink-50 to-purple-50 rounded-2xl border border-pink-100 p-5">
+        <h4 class="font-semibold text-gray-900 mb-2 text-sm">Anti-Spam Tips</h4>
+        <ul class="text-xs text-gray-600 space-y-1.5">
+          <li class="flex items-start gap-1.5"><i class="ri-check-line text-green-500 mt-0.5"></i> Use personalized subject lines</li>
+          <li class="flex items-start gap-1.5"><i class="ri-check-line text-green-500 mt-0.5"></i> Keep attachments under 10MB</li>
+          <li class="flex items-start gap-1.5"><i class="ri-check-line text-green-500 mt-0.5"></i> Add unsubscribe header (auto)</li>
+          <li class="flex items-start gap-1.5"><i class="ri-check-line text-green-500 mt-0.5"></i> 3s gap between bulk emails</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Templates Tab -->
+<div id="panel-templates" class="tab-panel hidden">
+  <div class="flex justify-between items-center mb-4">
+    <h3 class="font-semibold text-gray-900">Email Templates</h3>
+    <button onclick="document.getElementById('templateModal').showModal()" class="px-4 py-2 btn-pink text-white text-sm font-medium rounded-xl hover:shadow-lg transition-all flex items-center gap-2">
+      <i class="ri-add-line"></i> New Template
+    </button>
+  </div>
+  <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <% templates.forEach(t => { %>
+      <div class="bg-white rounded-2xl border border-pink-100 p-5 card-hover">
+        <div class="flex items-start justify-between mb-3">
+          <div class="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center">
+            <i class="ri-file-list-line text-pink-600"></i>
+          </div>
+          <span class="text-xs px-2 py-0.5 rounded-full <%= t.isHtml ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500' %>"><%= t.isHtml ? 'HTML' : 'Text' %></span>
+        </div>
+        <h4 class="font-semibold text-gray-900 mb-1"><%= t.name %></h4>
+        <p class="text-xs text-gray-500 mb-2 truncate"><%= t.subject %></p>
+        <p class="text-xs text-gray-400 line-clamp-2 mb-3"><%= t.content.replace(/<[^>]*>/g, '').substring(0, 100) %></p>
+        <% if (t.attachments) { %>
+          <div class="flex items-center gap-1 mb-3">
+            <i class="ri-attachment-line text-pink-400 text-xs"></i>
+            <span class="text-[10px] text-pink-500">Has attachments</span>
+          </div>
+        <% } %>
+        <div class="flex gap-2">
+          <button onclick="useTemplate(<%= t.id %>)" class="flex-1 py-1.5 text-xs font-medium text-pink-600 bg-pink-50 rounded-lg hover:bg-pink-100">Use</button>
+          <button onclick="editTemplate(<%= t.id %>, '<%= t.name %>', '<%= t.subject %>', `<%= t.content.replace(/`/g, '\\`') %>`, <%= t.isHtml %>)" class="flex-1 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100">Edit</button>
+          <form action="/email/templates/delete/<%= t.id %>" method="POST" class="flex-1" onsubmit="return confirm('Delete?')">
+            <button type="submit" class="w-full py-1.5 text-xs font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100">Del</button>
+          </form>
+        </div>
+      </div>
+    <% }); %>
+  </div>
+  <% if (!templates.length) { %>
+    <div class="bg-white rounded-2xl border border-pink-100 p-12 text-center">
+      <div class="w-16 h-16 rounded-full bg-pink-50 flex items-center justify-center mx-auto mb-3">
+        <i class="ri-file-list-line text-2xl text-pink-300"></i>
+      </div>
+      <p class="text-sm text-gray-500">No templates yet</p>
+    </div>
+  <% } %>
+</div>
+
+<!-- History Tab -->
+<div id="panel-history" class="tab-panel hidden">
+  <h3 class="font-semibold text-gray-900 mb-4">Email History</h3>
+  <div class="bg-white rounded-2xl border border-pink-100 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-gray-50 border-b border-pink-100">
+          <tr>
+            <th class="text-left px-4 py-3 font-medium text-gray-700">Direction</th>
+            <th class="text-left px-4 py-3 font-medium text-gray-700">To/From</th>
+            <th class="text-left px-4 py-3 font-medium text-gray-700">Subject</th>
+            <th class="text-left px-4 py-3 font-medium text-gray-700">Status</th>
+            <th class="text-left px-4 py-3 font-medium text-gray-700">Date</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          <% messages.forEach(m => { %>
+            <tr class="hover:bg-pink-50/50 transition-colors">
+              <td class="px-4 py-3">
+                <span class="text-xs px-2 py-1 rounded-full <%= m.direction === 'outbound' ? 'bg-blue-100 text-blue-600' : 'bg-green-100 text-green-600' %>">
+                  <%= m.direction === 'outbound' ? 'Sent' : 'Received' %>
+                </span>
+              </td>
+              <td class="px-4 py-3 text-xs text-gray-600 truncate max-w-xs"><%= m.direction === 'outbound' ? m.toEmail : m.fromEmail %></td>
+              <td class="px-4 py-3 text-xs text-gray-900 font-medium truncate max-w-xs"><%= m.subject || '-' %></td>
+              <td class="px-4 py-3">
+                <span class="text-xs px-2 py-1 rounded-full
+                  <%= m.status === 'sent' || m.status === 'delivered' ? 'bg-green-100 text-green-600' :
+                     m.status === 'failed' || m.status === 'bounced' ? 'bg-red-100 text-red-600' :
+                     'bg-yellow-100 text-yellow-600' %>">
+                  <%= m.status %>
+                </span>
+              </td>
+              <td class="px-4 py-3 text-xs text-gray-500"><%= new Date(m.createdAt).toLocaleString() %></td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+    <% if (!messages.length) { %>
+      <div class="p-8 text-center">
+        <p class="text-sm text-gray-500">No emails yet</p>
+      </div>
+    <% } %>
+  </div>
+</div>
+
+<!-- Scheduled Tab -->
+<div id="panel-scheduled" class="tab-panel hidden">
+  <h3 class="font-semibold text-gray-900 mb-4">Scheduled Emails</h3>
+  <div class="bg-white rounded-2xl border border-pink-100 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-gray-50 border-b border-pink-100">
+          <tr>
+            <th class="text-left px-4 py-3 font-medium text-gray-700">To</th>
+            <th class="text-left px-4 py-3 font-medium text-gray-700">Subject</th>
+            <th class="text-left px-4 py-3 font-medium text-gray-700">Scheduled For</th>
+            <th class="text-left px-4 py-3 font-medium text-gray-700">Status</th>
+            <th class="text-left px-4 py-3 font-medium text-gray-700">Action</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          <% if (typeof scheduledEmailsData !== 'undefined' && scheduledEmailsData.length > 0) { %>
+            <% scheduledEmailsData.forEach(s => { %>
+              <tr class="hover:bg-pink-50/50 transition-colors">
+                <td class="px-4 py-3 text-xs text-gray-600 truncate max-w-xs"><%= s.toEmail %></td>
+                <td class="px-4 py-3 text-xs text-gray-900 font-medium truncate max-w-xs"><%= s.subject %></td>
+                <td class="px-4 py-3 text-xs text-gray-500"><%= new Date(s.scheduledAt).toLocaleString() %></td>
+                <td class="px-4 py-3">
+                  <span class="text-xs px-2 py-1 rounded-full
+                    <%= s.status === 'sent' ? 'bg-green-100 text-green-600' :
+                       s.status === 'failed' ? 'bg-red-100 text-red-600' :
+                       s.status === 'processing' ? 'bg-yellow-100 text-yellow-600' :
+                       'bg-blue-100 text-blue-600' %>">
+                    <%= s.status %>
+                  </span>
+                </td>
+                <td class="px-4 py-3">
+                  <% if (s.status === 'pending') { %>
+                    <form action="/email/schedule/delete/<%= s.id %>" method="POST" onsubmit="return confirm('Cancel this scheduled email?')">
+                      <button type="submit" class="text-xs text-red-600 hover:text-red-700"><i class="ri-close-circle-line"></i> Cancel</button>
+                    </form>
+                  <% } else { %>
+                    <span class="text-xs text-gray-400">-</span>
+                  <% } %>
+                </td>
+              </tr>
+            <% }); %>
+          <% } else { %>
+            <tr><td colspan="5" class="px-4 py-8 text-center text-sm text-gray-500">No scheduled emails</td></tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Automation Tab -->
+<div id="panel-automation" class="tab-panel hidden">
+  <div class="flex justify-between items-center mb-4">
+    <h3 class="font-semibold text-gray-900">Auto-Reply Rules</h3>
+    <button onclick="document.getElementById('ruleModal').showModal()" class="px-4 py-2 btn-pink text-white text-sm font-medium rounded-xl hover:shadow-lg transition-all flex items-center gap-2">
+      <i class="ri-add-line"></i> New Rule
+    </button>
+  </div>
+  <div class="space-y-4">
+    <% rules.forEach(r => { %>
+      <div class="bg-white rounded-2xl border border-pink-100 p-5">
+        <div class="flex items-start justify-between mb-3">
+          <div>
+            <h4 class="font-semibold text-gray-900"><%= r.name %></h4>
+            <p class="text-xs text-gray-500">Trigger: <%= r.triggerType %> "<%= r.triggerValue %>"</p>
+          </div>
+          <span class="text-xs px-2.5 py-1 rounded-full <%= r.isActive ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500' %>"><%= r.isActive ? 'Active' : 'Inactive' %></span>
+        </div>
+        <div class="bg-gray-50 rounded-xl p-3 mb-3">
+          <p class="text-xs text-gray-500 mb-1">Response (<%= r.responseType %>)</p>
+          <p class="text-sm text-gray-700 line-clamp-2"><%= r.responseContent %></p>
+        </div>
+        <div class="flex items-center gap-4 text-xs text-gray-500">
+          <span><i class="ri-flashlight-line"></i> <%= r.usageCount || 0 %> uses</span>
+          <form action="/email/rules/delete/<%= r.id %>" method="POST" class="ml-auto" onsubmit="return confirm('Delete rule?')">
+            <button type="submit" class="text-red-600 hover:text-red-700"><i class="ri-delete-bin-line"></i> Delete</button>
+          </form>
+        </div>
+      </div>
+    <% }); %>
+  </div>
+  <% if (!rules.length) { %>
+    <div class="bg-white rounded-2xl border border-pink-100 p-12 text-center">
+      <div class="w-16 h-16 rounded-full bg-pink-50 flex items-center justify-center mx-auto mb-3">
+        <i class="ri-robot-line text-2xl text-pink-300"></i>
+      </div>
+      <p class="text-sm text-gray-500">No automation rules yet</p>
+    </div>
+  <% } %>
+</div>
+
+<!-- Config Tab -->
+<div id="panel-config" class="tab-panel hidden">
+  <div class="max-w-2xl">
+    <div class="bg-white rounded-2xl border border-pink-100 p-6">
+      <h3 class="font-semibold text-gray-900 mb-4">SMTP / IMAP Configuration</h3>
+      <form action="/email/config" method="POST">
+        <div class="grid md:grid-cols-2 gap-4 mb-4">
+          <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Email Address *</label>
+            <input type="email" name="emailUser" value="<%= config ? config.emailUser : '' %>" required placeholder="you@gmail.com" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-200">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">App Password *</label>
+            <input type="password" name="emailPass" value="<%= config ? config.emailPass : '' %>" required placeholder="**** **** **** ****" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-200">
+            <p class="text-xs text-gray-400 mt-1">Use app password, not your login password</p>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">SMTP Host *</label>
+            <input type="text" name="smtpHost" value="<%= config ? config.smtpHost : 'smtp.gmail.com' %>" required placeholder="smtp.gmail.com" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-200">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">SMTP Port</label>
+            <input type="number" name="smtpPort" value="<%= config ? config.smtpPort : '587' %>" placeholder="587" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-200">
+            <p class="text-[10px] text-gray-400 mt-1">Gmail: 587 (recommended) or 465</p>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">From Name</label>
+            <input type="text" name="fromName" value="<%= config ? config.fromName : '' %>" placeholder="Your Business Name" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-200">
+          </div>
+          <div class="flex items-center gap-2 pt-5">
+            <input type="checkbox" name="smtpSecure" <%= config && config.smtpSecure ? 'checked' : '' %> class="rounded border-pink-200 text-pink-600 focus:ring-pink-500">
+            <label class="text-sm text-gray-700">Use SSL/TLS</label>
+            <span class="text-[10px] text-gray-400">(ON for port 465, OFF for port 587)</span>
+          </div>
+        </div>
+        <div class="border-t border-gray-100 pt-4 mb-4">
+          <p class="text-xs font-medium text-gray-500 mb-2 uppercase tracking-wide">IMAP (Optional - for receiving)</p>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-medium text-gray-700 mb-1">IMAP Host</label>
+              <input type="text" name="imapHost" value="<%= config ? config.imapHost || '' : 'imap.gmail.com' %>" placeholder="imap.gmail.com" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-200">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-700 mb-1">IMAP Port</label>
+              <input type="number" name="imapPort" value="<%= config ? config.imapPort || '993' : '993' %>" placeholder="993" class="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-200">
+            </div>
+          </div>
+        </div>
+        <button type="submit" class="px-6 py-2.5 btn-pink text-white text-sm font-medium rounded-xl hover:shadow-lg transition-all">
+          <i class="ri-save-line"></i> Save & Verify
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Template Modal -->
+<dialog id="templateModal" class="modal">
+  <div class="modal-box bg-white rounded-2xl max-w-2xl">
+    <h3 class="font-bold text-lg text-gray-900 mb-4">New Email Template</h3>
+    <form action="/email/templates/create" method="POST" enctype="multipart/form-data">
+      <div class="mb-3">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Template Name</label>
+        <input type="text" name="name" required class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm">
+      </div>
+      <div class="mb-3">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+        <input type="text" name="subject" required placeholder="Use {{name}} for personalization" class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm">
+      </div>
+      <div class="mb-3">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Content</label>
+        <textarea name="content" rows="6" required placeholder="Email body... Use {{name}}, {{email}}, {{phone}}" class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm font-mono resize-none"></textarea>
+      </div>
+      <div class="mb-3">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Template Attachments</label>
+        <input type="file" name="attachments" multiple class="w-full text-xs text-gray-600">
+        <p class="text-[10px] text-gray-400 mt-1">Files attached to this template will be included in every email sent using it</p>
+      </div>
+      <div class="flex items-center gap-2 mb-4">
+        <input type="checkbox" name="isHtml" checked class="rounded border-pink-200 text-pink-600 focus:ring-pink-500">
+        <label class="text-sm text-gray-700">HTML Content</label>
+      </div>
+      <div class="flex gap-3 justify-end">
+        <button type="button" onclick="document.getElementById('templateModal').close()" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+        <button type="submit" class="px-6 py-2 btn-pink text-white text-sm font-medium rounded-lg"><i class="ri-save-line"></i> Save</button>
+      </div>
+    </form>
+  </div>
+</dialog>
+
+<!-- Edit Template Modal -->
+<dialog id="editTemplateModal" class="modal">
+  <div class="modal-box bg-white rounded-2xl max-w-2xl">
+    <h3 class="font-bold text-lg text-gray-900 mb-4">Edit Template</h3>
+    <form id="editTemplateForm" action="" method="POST" enctype="multipart/form-data">
+      <div class="mb-3">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Template Name</label>
+        <input type="text" name="name" id="etName" required class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm">
+      </div>
+      <div class="mb-3">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+        <input type="text" name="subject" id="etSubject" required class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm">
+      </div>
+      <div class="mb-3">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Content</label>
+        <textarea name="content" id="etContent" rows="6" required class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm font-mono resize-none"></textarea>
+      </div>
+      <div class="mb-3">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Replace Attachments</label>
+        <input type="file" name="attachments" multiple class="w-full text-xs text-gray-600">
+        <p class="text-[10px] text-gray-400 mt-1">Upload new files to replace existing template attachments</p>
+      </div>
+      <div class="flex items-center gap-2 mb-4">
+        <input type="checkbox" name="isHtml" id="etIsHtml" class="rounded border-pink-200 text-pink-600 focus:ring-pink-500">
+        <label class="text-sm text-gray-700">HTML Content</label>
+      </div>
+      <div class="flex gap-3 justify-end">
+        <button type="button" onclick="document.getElementById('editTemplateModal').close()" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+        <button type="submit" class="px-6 py-2 btn-pink text-white text-sm font-medium rounded-lg"><i class="ri-save-line"></i> Update</button>
+      </div>
+    </form>
+  </div>
+</dialog>
+
+<!-- Rule Modal -->
+<dialog id="ruleModal" class="modal">
+  <div class="modal-box bg-white rounded-2xl max-w-lg">
+    <h3 class="font-bold text-lg text-gray-900 mb-4">New Auto-Reply Rule</h3>
+    <form action="/email/rules/create" method="POST">
+      <div class="mb-3">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Rule Name</label>
+        <input type="text" name="name" required placeholder="e.g. Welcome Response" class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm">
+      </div>
+      <div class="grid grid-cols-2 gap-3 mb-3">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Trigger Type</label>
+          <select name="triggerType" class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm bg-white">
+            <option value="all">All Emails</option>
+            <option value="contains">Contains Text</option>
+            <option value="exact">Exact Match</option>
+            <option value="from_domain">From Domain</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Trigger Value</label>
+          <input type="text" name="triggerValue" placeholder="hello or @domain.com" class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm">
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Response Type</label>
+        <select name="responseType" id="ruleResponseType" onchange="toggleResponseType()" class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm bg-white">
+          <option value="static">Static Text</option>
+          <option value="template">Use Template</option>
+          <option value="ai">AI Generated</option>
+        </select>
+      </div>
+      <div class="mb-3" id="staticResponseField">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Response Content</label>
+        <textarea name="responseContent" rows="4" placeholder="Your auto-reply message..." class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm resize-none"></textarea>
+      </div>
+      <div class="mb-3 hidden" id="templateResponseField">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Select Template</label>
+        <select name="templateId" class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm bg-white">
+          <option value="">-- Select --</option>
+          <% templates.forEach(t => { %>
+            <option value="<%= t.id %>"><%= t.name %></option>
+          <% }); %>
+        </select>
+      </div>
+      <div class="mb-3 hidden" id="aiResponseField">
+        <label class="block text-sm font-medium text-gray-700 mb-1">AI Prompt</label>
+        <textarea name="aiPrompt" rows="3" placeholder="Write a professional reply to..." class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm resize-none"></textarea>
+      </div>
+      <div class="flex gap-3 justify-end">
+        <button type="button" onclick="document.getElementById('ruleModal').close()" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+        <button type="submit" class="px-6 py-2 btn-pink text-white text-sm font-medium rounded-lg"><i class="ri-save-line"></i> Save</button>
+      </div>
+    </form>
+  </div>
+</dialog>
+
+<!-- Bulk Send Modal -->
+<dialog id="bulkModal" class="modal">
+  <div class="modal-box bg-white rounded-2xl max-w-2xl">
+    <h3 class="font-bold text-lg text-gray-900 mb-4">Bulk Email to Contacts</h3>
+    <form id="bulkForm" onsubmit="sendBulk(event)">
+      <div class="mb-3">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Select Contacts (with email)</label>
+        <div class="max-h-48 overflow-y-auto border border-gray-200 rounded-xl p-2">
+          <% contacts.filter(c => c.email).forEach(c => { %>
+            <label class="flex items-center gap-2 p-2 hover:bg-gray-50 rounded-lg cursor-pointer">
+              <input type="checkbox" name="contactIds" value="<%= c.id %>" class="rounded border-pink-200 text-pink-600 focus:ring-pink-500">
+              <span class="text-sm text-gray-700"><%= c.name %> &lt;<%= c.email %>&gt;</span>
+            </label>
+          <% }); %>
+          <% if (!contacts.filter(c => c.email).length) { %>
+            <p class="text-sm text-gray-400 p-2">No contacts with email addresses</p>
+          <% } %>
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+        <input type="text" id="bulkSubject" required placeholder="Campaign subject" class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm">
+      </div>
+      <div class="mb-3">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Message</label>
+        <textarea id="bulkBody" rows="4" required placeholder="Use {{name}}, {{email}}, {{phone}} for personalization" class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm resize-none font-mono"></textarea>
+      </div>
+      <div class="flex items-center gap-2 mb-4">
+        <input type="checkbox" id="bulkIsHtml" class="rounded border-pink-200 text-pink-600 focus:ring-pink-500">
+        <label class="text-sm text-gray-700">Send as HTML</label>
+      </div>
+      <div class="flex gap-3 justify-end">
+        <button type="button" onclick="document.getElementById('bulkModal').close()" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+        <button type="submit" class="px-6 py-2 btn-pink text-white text-sm font-medium rounded-lg"><i class="ri-mail-volume-line"></i> Send Bulk</button>
+      </div>
+    </form>
+    <div id="bulkResult" class="hidden mt-4 p-3 rounded-xl text-sm"></div>
+  </div>
+</dialog>
+
+<script>
+function showTab(tab) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.classList.remove('bg-pink-600', 'text-white');
+    b.classList.add('bg-white', 'text-pink-600', 'border', 'border-pink-200');
+  });
+  document.getElementById('panel-' + tab).classList.remove('hidden');
+  const btn = document.getElementById('tab-' + tab);
+  btn.classList.remove('bg-white', 'text-pink-600', 'border', 'border-pink-200');
+  btn.classList.add('bg-pink-600', 'text-white');
+}
+
+function toggleResponseType() {
+  const type = document.getElementById('ruleResponseType').value;
+  document.getElementById('staticResponseField').classList.toggle('hidden', type !== 'static');
+  document.getElementById('templateResponseField').classList.toggle('hidden', type !== 'template');
+  document.getElementById('aiResponseField').classList.toggle('hidden', type !== 'ai');
+}
+
+function editTemplate(id, name, subject, content, isHtml) {
+  document.getElementById('editTemplateForm').action = '/email/templates/update/' + id;
+  document.getElementById('etName').value = name;
+  document.getElementById('etSubject').value = subject;
+  document.getElementById('etContent').value = content;
+  document.getElementById('etIsHtml').checked = isHtml;
+  document.getElementById('editTemplateModal').showModal();
+}
+
+function useTemplate(id) {
+  fetch('/email/templates/' + id).then(r => r.json()).then(data => {
+    if (data.success) {
+      const t = data.template;
+      document.querySelector('textarea[name="body"]').value = t.content;
+      document.querySelector('input[name="subject"]').value = t.subject;
+      document.querySelector('input[name="isHtml"]').checked = t.isHtml;
+      showTab('compose');
+    }
+  });
+}
+
+function openBulkModal() {
+  document.getElementById('bulkModal').showModal();
+}
+
+async function sendBulk(e) {
+  e.preventDefault();
+  const form = document.getElementById('bulkForm');
+  const checked = form.querySelectorAll('input[name="contactIds"]:checked');
+  const contactIds = Array.from(checked).map(c => c.value);
+  if (!contactIds.length) {
+    alert('Select at least one contact');
+    return;
+  }
+
+  const btn = form.querySelector('button[type="submit"]');
+  btn.innerHTML = '<i class="ri-loader-4-line animate-spin"></i> Sending...';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch('/email/bulk-send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contactIds,
+        subject: document.getElementById('bulkSubject').value,
+        body: document.getElementById('bulkBody').value,
+        isHtml: document.getElementById('bulkIsHtml').checked,
+      })
+    });
+    const data = await res.json();
+    const resultDiv = document.getElementById('bulkResult');
+    resultDiv.classList.remove('hidden');
+    if (data.success) {
+      resultDiv.className = 'mt-4 p-3 rounded-xl text-sm bg-green-50 text-green-700';
+      resultDiv.textContent = data.message;
+      setTimeout(() => window.location.reload(), 2000);
+    } else {
+      resultDiv.className = 'mt-4 p-3 rounded-xl text-sm bg-red-50 text-red-700';
+      resultDiv.textContent = data.error || 'Failed';
+    }
+  } catch (err) {
+    alert('Error: ' + err.message);
+  } finally {
+    btn.innerHTML = '<i class="ri-mail-volume-line"></i> Send Bulk';
+    btn.disabled = false;
+  }
+}
+</script>

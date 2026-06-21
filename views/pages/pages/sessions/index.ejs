@@ -1,0 +1,410 @@
+<div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+  <div>
+    <h2 class="text-xl font-bold text-gray-900">WhatsApp Sessions</h2>
+    <p class="text-sm text-gray-500">
+      <%= isAdmin ? 'Manage all connected WhatsApp accounts' : 'Your WhatsApp sessions' %>
+    </p>
+    <% if (typeof userSessionCount !== 'undefined' && typeof userMaxSessions !== 'undefined') { %>
+      <p class="text-xs mt-1 <%= userSessionCount >= userMaxSessions ? 'text-red-500 font-medium' : 'text-gray-400' %>">
+        <i class="ri-whatsapp-line"></i> Sessions: <%= userSessionCount %> / <%= userMaxSessions %>
+        <% if (userSessionCount >= userMaxSessions && !isAdmin) { %>
+          <span class="ml-1">— Limit reached. Contact admin to increase.</span>
+        <% } %>
+      </p>
+    <% } %>
+  </div>
+  <% if (typeof canCreateSession !== 'undefined' && canCreateSession) { %>
+    <button onclick="document.getElementById('createModal').showModal()" class="px-5 py-2.5 btn-pink text-white text-sm font-medium rounded-xl hover:shadow-lg transition-all flex items-center gap-2 w-fit">
+      <i class="ri-add-line"></i> Add Session
+    </button>
+  <% } %>
+</div>
+
+<!-- Sessions Grid -->
+<div id="sessionsGrid" class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+  <% sessions.forEach(session => { %>
+    <div class="bg-white rounded-2xl border border-pink-100 p-5 card-hover" data-session-id="<%= session.id %>" data-status="<%= session.realtimeStatus || 'disconnected' %>" data-name="<%= session.sessionName %>" data-phone="<%= session.phoneNumber || '' %>">
+      <div class="flex items-start justify-between mb-4">
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 rounded-xl <%= session.realtimeStatus === 'connected' ? 'bg-green-100' : 'bg-gray-100' %> flex items-center justify-center session-icon-box">
+            <i class="ri-whatsapp-line text-2xl <%= session.realtimeStatus === 'connected' ? 'text-green-600' : 'text-gray-400' %> session-icon"></i>
+          </div>
+          <div>
+            <h3 class="font-semibold text-gray-900"><%= session.sessionName %></h3>
+            <p class="text-xs text-gray-500 session-phone"><%= session.phoneNumber || 'Not connected' %></p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <% if (!isAdmin && session.isOwn) { %>
+            <span class="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full bg-blue-100 text-blue-700">
+              <i class="ri-user-line"></i> Yours
+            </span>
+          <% } %>
+          <% if (session.isShared) { %>
+            <span class="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full bg-purple-100 text-purple-700">
+              <i class="ri-share-line"></i> Shared
+            </span>
+          <% } %>
+          <span class="session-status-badge inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full
+            <%= session.realtimeStatus === 'connected' ? 'bg-green-100 text-green-700' : session.realtimeStatus === 'connecting' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-600' %>">
+            <span class="session-status-dot w-1.5 h-1.5 rounded-full <%= session.realtimeStatus === 'connected' ? 'bg-green-500 animate-pulse' : session.realtimeStatus === 'connecting' ? 'bg-yellow-500' : 'bg-gray-400' %>"></span>
+            <%= session.realtimeStatus || 'disconnected' %>
+          </span>
+        </div>
+      </div>
+
+      <!-- QR Code if connecting -->
+      <div class="session-qr">
+        <% if (session.qrCode) { %>
+          <div class="mb-4 p-4 bg-white rounded-xl border border-pink-200">
+            <p class="text-sm font-medium text-gray-700 mb-2"><i class="ri-qr-code-line text-pink-500"></i> Scan with WhatsApp</p>
+            <div class="flex justify-center">
+              <img src="<%= session.qrCode %>" alt="QR Code" class="w-48 h-48">
+            </div>
+            <p class="text-xs text-gray-500 text-center mt-2">Open WhatsApp on your phone → Settings → Linked Devices → Link a Device</p>
+          </div>
+        <% } %>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex items-center gap-2 pt-3 border-t border-gray-100 session-actions">
+        <% if (session.realtimeStatus === 'disconnected') { %>
+          <% const wasConnected = !!session.phoneNumber; %>
+          <form action="/sessions/reconnect/<%= session.id %>" method="POST" class="flex-1 session-form" data-action="reconnect">
+            <button type="submit" class="w-full py-2.5 bg-gradient-to-r from-green-500 to-green-600 text-white text-sm font-medium rounded-xl hover:shadow-md transition-all flex items-center justify-center gap-2 session-btn">
+              <span class="btn-text"><i class="ri-<%= wasConnected ? 'refresh' : 'login-circle' %>-line"></i> <%= wasConnected ? 'Reconnect' : 'Connect' %></span>
+              <span class="btn-loading hidden"><i class="ri-loader-4-line animate-spin"></i> Connecting...</span>
+            </button>
+          </form>
+        <% } else if (session.realtimeStatus === 'connecting' || session.realtimeStatus === 'qr_ready') { %>
+          <div class="flex-1">
+            <button disabled class="w-full py-2.5 bg-yellow-50 text-yellow-700 text-sm font-medium rounded-xl cursor-wait flex items-center justify-center gap-2">
+              <i class="ri-loader-4-line animate-spin"></i> Please wait, connecting...
+            </button>
+          </div>
+        <% } else { %>
+          <form action="/sessions/disconnect/<%= session.id %>" method="POST" class="flex-1 session-form" data-action="disconnect">
+            <button type="submit" class="w-full py-2.5 border border-gray-200 text-gray-600 text-sm font-medium rounded-xl hover:bg-gray-50 transition-all flex items-center justify-center gap-2 session-btn">
+              <span class="btn-text"><i class="ri-logout-box-r-line"></i> Disconnect</span>
+              <span class="btn-loading hidden"><i class="ri-loader-4-line animate-spin"></i> Disconnecting...</span>
+            </button>
+          </form>
+        <% } %>
+        <% if (isAdmin && session.realtimeStatus === 'connected') { %>
+          <form action="/sessions/toggle-shared/<%= session.id %>" method="POST" class="inline session-form" data-action="share">
+            <button type="submit" class="p-2.5 <%= session.isShared ? 'text-purple-600 bg-purple-50' : 'text-gray-400 hover:text-purple-600 hover:bg-purple-50' %> rounded-xl transition-colors session-btn" title="<%= session.isShared ? 'Unshare this session' : 'Share with all users' %>">
+              <span class="btn-text"><i class="ri-<%= session.isShared ? 'share-forward' : 'share-circle' %>-line"></i></span>
+              <span class="btn-loading hidden"><i class="ri-loader-4-line animate-spin"></i></span>
+            </button>
+          </form>
+        <% } %>
+        <form action="/sessions/delete/<%= session.id %>" method="POST" class="inline session-form" data-action="delete" onsubmit="return confirm('Delete this session permanently?')">
+          <button type="submit" class="p-2.5 text-red-500 hover:bg-red-50 rounded-xl transition-colors session-btn">
+            <span class="btn-text"><i class="ri-delete-bin-line"></i></span>
+            <span class="btn-loading hidden"><i class="ri-loader-4-line animate-spin"></i></span>
+          </button>
+        </form>
+      </div>
+      <% if (isAdmin && session.realtimeStatus === 'disconnected') { %>
+        <p class="text-xs text-gray-400 mt-2 text-center">
+          <%= session.phoneNumber ? 'Previously connected — click to restore without QR scan' : 'Click Connect to start a new WhatsApp session' %>
+        </p>
+      <% } %>
+    </div>
+  <% }); %>
+</div>
+
+<!-- Pagination Controls for Sessions -->
+<% if (typeof pagination !== 'undefined' && pagination && pagination.total > 0) { %>
+<style>
+  .page-btn { min-width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; font-size: 13px; font-weight: 500; border: 1px solid #e5e7eb; background: #fff; color: #374151; transition: all 0.15s; cursor: pointer; text-decoration: none; }
+  .page-btn:hover { border-color: #ec4899; color: #ec4899; }
+  .page-btn.active { background: #ec4899; color: #fff; border-color: #ec4899; }
+  .page-btn.disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
+  .per-page-select { padding: 6px 28px 6px 12px; border-radius: 10px; border: 1px solid #e5e7eb; background: #fff url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") right 8px center/16px no-repeat; font-size: 13px; color: #374151; appearance: none; -webkit-appearance: none; cursor: pointer; }
+</style>
+<div class="flex flex-wrap items-center justify-between gap-3 mt-6 px-2">
+  <div class="text-xs text-gray-500">
+    Showing <span class="font-semibold text-gray-700"><%= (pagination.page - 1) * pagination.perPage + 1 %></span>
+    – <span class="font-semibold text-gray-700"><%= Math.min(pagination.page * pagination.perPage, pagination.total) %></span>
+    of <span class="font-semibold text-gray-700"><%= pagination.total %></span> sessions
+  </div>
+  <div class="flex items-center gap-2">
+    <a href="/sessions?page=<%= pagination.page - 1 %>&perPage=<%= pagination.perPage %>" class="page-btn <%= pagination.hasPrev ? '' : 'disabled' %>"><i class="ri-arrow-left-s-line"></i></a>
+    <% if (pagination.startPage > 1) { %>
+      <a href="/sessions?page=1&perPage=<%= pagination.perPage %>" class="page-btn">1</a>
+      <% if (pagination.startPage > 2) { %><span class="text-gray-400 text-sm px-1">...</span><% } %>
+    <% } %>
+    <% pagination.pageRange.forEach(p => { %>
+      <a href="/sessions?page=<%= p %>&perPage=<%= pagination.perPage %>" class="page-btn <%= p === pagination.page ? 'active' : '' %>"><%= p %></a>
+    <% }); %>
+    <% if (pagination.endPage < pagination.totalPages) { %>
+      <% if (pagination.endPage < pagination.totalPages - 1) { %><span class="text-gray-400 text-sm px-1">...</span><% } %>
+      <a href="/sessions?page=<%= pagination.totalPages %>&perPage=<%= pagination.perPage %>" class="page-btn"><%= pagination.totalPages %></a>
+    <% } %>
+    <a href="/sessions?page=<%= pagination.page + 1 %>&perPage=<%= pagination.perPage %>" class="page-btn <%= pagination.hasNext ? '' : 'disabled' %>"><i class="ri-arrow-right-s-line"></i></a>
+    <select class="per-page-select ml-2" onchange="window.location.href='/sessions?page=1&perPage=' + this.value">
+      <option value="10" <%= pagination.perPage === 10 ? 'selected' : '' %>>10</option>
+      <option value="30" <%= pagination.perPage === 30 ? 'selected' : '' %>>30</option>
+      <option value="50" <%= pagination.perPage === 50 ? 'selected' : '' %>>50</option>
+    </select>
+  </div>
+</div>
+<% } %>
+
+<!-- Session Action Loading Script -->
+<script>
+document.querySelectorAll('.session-form').forEach(form => {
+  form.addEventListener('submit', function(e) {
+    const btn = form.querySelector('.session-btn');
+    const text = btn.querySelector('.btn-text');
+    const loading = btn.querySelector('.btn-loading');
+    if (btn && text && loading) {
+      btn.disabled = true;
+      text.classList.add('hidden');
+      loading.classList.remove('hidden');
+    }
+  });
+});
+
+// Live polling for session status updates
+(function() {
+  const sessions = <%- JSON.stringify(sessions.map(s => ({ id: s.id, status: s.realtimeStatus || 'disconnected', sessionName: s.sessionName }))) %>;
+  const hasConnecting = sessions.some(s => s.status !== 'connected');
+
+  if (!hasConnecting) return; // All connected, no need to poll
+
+  async function pollSession(session) {
+    try {
+      const res = await fetch(`/sessions/status/${session.id}`);
+      const data = await res.json();
+      updateSessionCard(session.id, data);
+    } catch (e) {}
+  }
+
+  function updateSessionCard(id, data) {
+    const card = document.querySelector(`[data-session-id="${id}"]`);
+    if (!card) return;
+
+    const statusBadge = card.querySelector('.session-status-badge');
+    const statusDot = card.querySelector('.session-status-dot');
+    const iconBox = card.querySelector('.session-icon-box');
+    const icon = card.querySelector('.session-icon');
+    const phoneText = card.querySelector('.session-phone');
+    const qrContainer = card.querySelector('.session-qr');
+    const actions = card.querySelector('.session-actions');
+
+    const newStatus = data.status || 'disconnected';
+    const isConnected = newStatus === 'connected';
+    const wasConnected = card.dataset.status === 'connected';
+
+    // Flash notification when just connected
+    if (isConnected && !wasConnected) {
+      showToast(`✅ ${card.dataset.name} connected!`);
+    }
+
+    card.dataset.status = newStatus;
+
+    // Update badge
+    if (statusBadge) {
+      statusBadge.className = `inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${isConnected ? 'bg-green-100 text-green-700' : newStatus === 'connecting' || newStatus === 'qr_ready' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-600'}`;
+      statusBadge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : newStatus === 'connecting' || newStatus === 'qr_ready' ? 'bg-yellow-500 animate-pulse' : 'bg-gray-400'}"></span> ${newStatus}`;
+    }
+
+    // Update icon
+    if (iconBox) {
+      iconBox.className = `w-12 h-12 rounded-xl ${isConnected ? 'bg-green-100' : 'bg-gray-100'} flex items-center justify-center session-icon-box`;
+    }
+    if (icon) {
+      icon.className = `ri-whatsapp-line text-2xl ${isConnected ? 'text-green-600' : 'text-gray-400'} session-icon`;
+    }
+
+    // Update phone number
+    if (phoneText && data.phoneNumber) {
+      phoneText.textContent = data.phoneNumber;
+    }
+
+    // Update QR code
+    if (qrContainer) {
+      if (data.qrCode) {
+        qrContainer.innerHTML = `
+          <div class="mb-4 p-4 bg-white rounded-xl border border-pink-200">
+            <p class="text-sm font-medium text-gray-700 mb-2"><i class="ri-qr-code-line text-pink-500"></i> Scan with WhatsApp</p>
+            <div class="flex justify-center"><img src="${data.qrCode}" alt="QR Code" class="w-48 h-48"></div>
+            <p class="text-xs text-gray-500 text-center mt-2">Open WhatsApp on your phone → Settings → Linked Devices → Link a Device</p>
+          </div>`;
+      } else {
+        qrContainer.innerHTML = '';
+      }
+    }
+
+    // Update actions
+    if (actions) {
+      if (isConnected) {
+        actions.innerHTML = `
+          <form action="/sessions/disconnect/${id}" method="POST" class="flex-1 session-form" data-action="disconnect">
+            <button type="submit" class="w-full py-2.5 border border-gray-200 text-gray-600 text-sm font-medium rounded-xl hover:bg-gray-50 transition-all flex items-center justify-center gap-2 session-btn">
+              <span class="btn-text"><i class="ri-logout-box-r-line"></i> Disconnect</span>
+              <span class="btn-loading hidden"><i class="ri-loader-4-line animate-spin"></i> Disconnecting...</span>
+            </button>
+          </form>
+          <form action="/sessions/delete/${id}" method="POST" class="inline session-form" data-action="delete" onsubmit="return confirm('Delete this session permanently?')">
+            <button type="submit" class="p-2.5 text-red-500 hover:bg-red-50 rounded-xl transition-colors session-btn">
+              <span class="btn-text"><i class="ri-delete-bin-line"></i></span>
+              <span class="btn-loading hidden"><i class="ri-loader-4-line animate-spin"></i></span>
+            </button>
+          </form>`;
+      } else if (newStatus === 'connecting' || newStatus === 'qr_ready') {
+        actions.innerHTML = `
+          <div class="flex-1">
+            <button disabled class="w-full py-2.5 bg-yellow-50 text-yellow-700 text-sm font-medium rounded-xl cursor-wait flex items-center justify-center gap-2">
+              <i class="ri-loader-4-line animate-spin"></i> Please wait, connecting...
+            </button>
+          </div>
+          <form action="/sessions/delete/${id}" method="POST" class="inline session-form" data-action="delete" onsubmit="return confirm('Delete this session permanently?')">
+            <button type="submit" class="p-2.5 text-red-500 hover:bg-red-50 rounded-xl transition-colors session-btn">
+              <span class="btn-text"><i class="ri-delete-bin-line"></i></span>
+              <span class="btn-loading hidden"><i class="ri-loader-4-line animate-spin"></i></span>
+            </button>
+          </form>`;
+      } else {
+        const wasConnected = !!card.dataset.phone;
+        actions.innerHTML = `
+          <form action="/sessions/reconnect/${id}" method="POST" class="flex-1 session-form" data-action="reconnect">
+            <button type="submit" class="w-full py-2.5 bg-gradient-to-r from-green-500 to-green-600 text-white text-sm font-medium rounded-xl hover:shadow-md transition-all flex items-center justify-center gap-2 session-btn">
+              <span class="btn-text"><i class="ri-${wasConnected ? 'refresh' : 'login-circle'}-line"></i> ${wasConnected ? 'Reconnect' : 'Connect'}</span>
+              <span class="btn-loading hidden"><i class="ri-loader-4-line animate-spin"></i> Connecting...</span>
+            </button>
+          </form>
+          <form action="/sessions/delete/${id}" method="POST" class="inline session-form" data-action="delete" onsubmit="return confirm('Delete this session permanently?')">
+            <button type="submit" class="p-2.5 text-red-500 hover:bg-red-50 rounded-xl transition-colors session-btn">
+              <span class="btn-text"><i class="ri-delete-bin-line"></i></span>
+              <span class="btn-loading hidden"><i class="ri-loader-4-line animate-spin"></i></span>
+            </button>
+          </form>`;
+      }
+      // Re-attach submit handlers
+      actions.querySelectorAll('.session-form').forEach(form => {
+        form.addEventListener('submit', function(e) {
+          const btn = form.querySelector('.session-btn');
+          if (!btn) return;
+          const text = btn.querySelector('.btn-text');
+          const loading = btn.querySelector('.btn-loading');
+          if (text && loading) {
+            btn.disabled = true;
+            text.classList.add('hidden');
+            loading.classList.remove('hidden');
+          }
+        });
+      });
+    }
+  }
+
+  function showToast(msg) {
+    let toast = document.getElementById('session-toast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'session-toast';
+      toast.className = 'fixed top-4 right-4 z-50 bg-green-600 text-white px-4 py-3 rounded-xl shadow-lg text-sm font-medium transition-all duration-300 transform translate-x-full';
+      document.body.appendChild(toast);
+    }
+    toast.textContent = msg;
+    toast.classList.remove('translate-x-full');
+    setTimeout(() => toast.classList.add('translate-x-full'), 4000);
+  }
+
+  // Poll every 5 seconds
+  setInterval(() => {
+    sessions.forEach(s => pollSession(s));
+  }, 5000);
+
+  // Also poll immediately on load for any non-connected sessions
+  sessions.filter(s => s.status !== 'connected').forEach(s => pollSession(s));
+})();
+</script>
+
+<!-- Create Modal -->
+<dialog id="createModal" class="modal">
+  <div class="modal-box bg-white rounded-2xl max-w-lg max-h-[85vh] overflow-y-auto">
+    <h3 class="font-bold text-lg text-gray-900 mb-4">New WhatsApp Session</h3>
+    <form action="/sessions/create" method="POST" data-loading-text="Creating session...">
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Session Name *</label>
+          <input type="text" name="sessionName" required placeholder="e.g., Business Account"
+            class="w-full px-4 py-2.5 rounded-xl border border-pink-200 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none text-sm">
+        </div>
+
+        <% if (typeof questionnaires !== 'undefined' && questionnaires.length > 0) { %>
+          <div class="border-t border-pink-100 pt-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Business Questionnaire</label>
+            <select name="questionnaireId" id="questionnaireSelect" onchange="toggleQuestionnaire()"
+              class="w-full px-4 py-2.5 rounded-xl border border-pink-200 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none text-sm bg-white mb-3">
+              <option value="">— Skip questionnaire —</option>
+              <% questionnaires.forEach(q => { %>
+                <option value="<%= q.id %>"><%= q.name %> (<%= q.questions.length %> questions)</option>
+              <% }); %>
+            </select>
+
+            <% questionnaires.forEach(q => { %>
+              <div id="qnaire-<%= q.id %>" class="questionnaire-fields hidden space-y-3 bg-pink-50/50 rounded-xl p-4 border border-pink-100">
+                <p class="text-xs font-medium text-pink-600 mb-2"><i class="ri-questionnaire-line mr-1"></i> <%= q.name %></p>
+                <% q.questions.forEach(question => { %>
+                  <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">
+                      <%= question.questionText %>
+                      <% if (question.isRequired) { %><span class="text-red-500">*</span><% } %>
+                    </label>
+                    <% if (question.questionType === 'text') { %>
+                      <input type="text" name="q_<%= question.id %>" <%= question.isRequired ? 'required' : '' %>
+                        class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none text-sm"
+                        placeholder="Your answer...">
+                    <% } else if (question.questionType === 'select') { %>
+                      <select name="q_<%= question.id %>" <%= question.isRequired ? 'required' : '' %>
+                        class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none text-sm bg-white">
+                        <option value="">Select...</option>
+                        <% try { const opts = JSON.parse(question.options || '[]'); opts.forEach(opt => { %>
+                          <option value="<%= opt %>"><%= opt %></option>
+                        <% }); } catch(e) {} %>
+                      </select>
+                    <% } else if (question.questionType === 'yesno') { %>
+                      <div class="flex gap-4">
+                        <label class="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-pink-200 cursor-pointer hover:border-pink-400 transition-colors">
+                          <input type="radio" name="q_<%= question.id %>" value="yes" <%= question.isRequired ? 'required' : '' %> class="text-pink-600 focus:ring-pink-500">
+                          <span class="text-sm text-gray-700">Yes</span>
+                        </label>
+                        <label class="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-pink-200 cursor-pointer hover:border-pink-400 transition-colors">
+                          <input type="radio" name="q_<%= question.id %>" value="no" <%= question.isRequired ? 'required' : '' %> class="text-pink-600 focus:ring-pink-500">
+                          <span class="text-sm text-gray-700">No</span>
+                        </label>
+                      </div>
+                    <% } %>
+                    <% if (question.mapToLeadField) { %>
+                      <p class="text-[10px] text-green-600 mt-0.5"><i class="ri-user-search-line mr-1"></i> Maps to lead: <%= question.mapToLeadField %></p>
+                    <% } %>
+                  </div>
+                <% }); %>
+              </div>
+            <% }); %>
+          </div>
+        <% } %>
+      </div>
+      <div class="flex gap-3 justify-end mt-5">
+        <button type="button" onclick="document.getElementById('createModal').close()" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+        <button type="submit" class="px-6 py-2 btn-pink text-white text-sm font-medium rounded-lg"><i class="ri-add-line"></i> Create</button>
+      </div>
+    </form>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+<script>
+function toggleQuestionnaire() {
+  const selected = document.getElementById('questionnaireSelect').value;
+  document.querySelectorAll('.questionnaire-fields').forEach(el => el.classList.add('hidden'));
+  if (selected) {
+    const el = document.getElementById('qnaire-' + selected);
+    if (el) el.classList.remove('hidden');
+  }
+}
+</script>

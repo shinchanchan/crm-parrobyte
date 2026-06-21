@@ -1,0 +1,261 @@
+<div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+  <div>
+    <h2 class="text-xl font-bold text-gray-900">Scheduled Messages</h2>
+    <p class="text-sm text-gray-500">Plan and schedule your message campaigns</p>
+  </div>
+  <button onclick="document.getElementById('scheduleModal').showModal()" class="px-5 py-2.5 btn-pink text-white text-sm font-medium rounded-xl hover:shadow-lg transition-all flex items-center gap-2 w-fit">
+    <i class="ri-calendar-schedule-line"></i> Schedule Message
+  </button>
+</div>
+
+<%
+const scheduleColumns = [
+  {
+    key: 'content',
+    label: 'Content',
+    sortable: true,
+    searchable: true,
+    format: (row) => `<span class="text-gray-600 max-w-xs truncate block">${row.content}</span>`
+  },
+  {
+    key: 'type',
+    label: 'Type',
+    sortable: true,
+    searchable: true,
+    format: (row) => `<span class="text-xs capitalize bg-gray-100 text-gray-600 px-2 py-1 rounded-full">${row.type}</span>`
+  },
+  {
+    key: 'scheduleTime',
+    label: 'Schedule',
+    sortable: true,
+    searchable: true,
+    format: (row) => `<span class="text-xs text-gray-500">${new Date(row.scheduleTime).toLocaleString()}</span>`
+  },
+  {
+    key: 'status',
+    label: 'Status',
+    sortable: true,
+    searchable: true,
+    format: (row) => {
+      const colors = { completed: 'bg-green-100 text-green-700', pending: 'bg-yellow-100 text-yellow-700', cancelled: 'bg-gray-100 text-gray-600', processing: 'bg-blue-100 text-blue-700' };
+      const cls = colors[row.status] || colors.pending;
+      return `<span class="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${cls}">${row.status}</span>`;
+    }
+  },
+  {
+    key: 'repeatPattern',
+    label: 'Repeat',
+    sortable: true,
+    searchable: true,
+    format: (row) => `<span class="text-xs text-gray-500">${row.repeatPattern || 'Once'}</span>`
+  },
+  {
+    key: 'actions',
+    label: 'Actions',
+    sortable: false,
+    searchable: false,
+    format: (row) => `
+      <div class="flex items-center justify-end">
+        ${row.status === 'pending' ? `
+          <form action="/schedule/cancel/${row.id}" method="POST" class="inline" onsubmit="return confirm('Cancel this scheduled message?')">
+            <button type="submit" class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+              <i class="ri-close-circle-line"></i>
+            </button>
+          </form>
+        ` : '<span class="text-xs text-gray-400">—</span>'}
+      </div>
+    `
+  },
+];
+%>
+<%- include('../../partials/paginated-table', {
+  data: schedules,
+  columns: scheduleColumns,
+  pagination,
+  columnFilters,
+  sortCol,
+  sortDir,
+  actionPath: '/schedule',
+}) %>
+
+<dialog id="scheduleModal" class="modal">
+  <div class="modal-box bg-white rounded-2xl max-w-2xl">
+    <h3 class="font-bold text-lg text-gray-900 mb-4">Schedule Message</h3>
+    <form action="/schedule/create" method="POST" data-loading-text="Scheduling message..." id="scheduleForm">
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">WhatsApp Session *</label>
+          <% const connectedSessions = (typeof availableSessions !== 'undefined' ? availableSessions : []).filter(s => s.realtimeStatus === 'connected' || s.status === 'connected'); %>
+          <% if (connectedSessions.length > 0) { %>
+            <select name="sessionId" required class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm bg-white">
+              <option value="">Select session</option>
+              <% connectedSessions.forEach(s => { %>
+                <option value="<%= s.id %>"><%= s.label %></option>
+              <% }); %>
+            </select>
+          <% } else { %>
+            <div class="w-full px-4 py-2 rounded-xl border border-red-200 bg-red-50 text-sm text-red-700">
+              <i class="ri-error-warning-line mr-1"></i> No connected session available. Create or reconnect a session first.
+            </div>
+          <% } %>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Template (optional)</label>
+          <select name="templateId" class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm bg-white" onchange="fillTemplate(this)">
+            <option value="">No template</option>
+            <% templates.forEach(t => { %>
+              <option value="<%= t.id %>" data-content="<%= (t.content || '').replace(/"/g, '&quot;') %>" data-type="<%= t.type %>" data-mediaurl="<%= t.mediaUrl || '' %>" data-variables="<%= (t.variables || '').replace(/"/g, '&quot;') %>"><%= t.name %> <%= t.type !== 'text' ? '(' + t.type + ')' : '' %></option>
+            <% }); %>
+          </select>
+        </div>
+      </div>
+
+      <!-- Contact Selector -->
+      <div class="mt-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Contacts *</label>
+        <div class="border border-pink-200 rounded-xl p-3 bg-white">
+          <div class="flex items-center gap-2 mb-2">
+            <input type="text" id="contactSearch" placeholder="Search contacts..." class="flex-1 px-3 py-1.5 rounded-lg border border-gray-200 text-sm outline-none focus:border-pink-500" oninput="filterContacts()">
+            <button type="button" onclick="selectAllContacts()" class="px-3 py-1.5 text-xs bg-pink-50 text-pink-600 rounded-lg hover:bg-pink-100">Select All</button>
+            <button type="button" onclick="deselectAllContacts()" class="px-3 py-1.5 text-xs bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100">Clear</button>
+          </div>
+          <div class="max-h-48 overflow-y-auto space-y-1" id="contactList">
+            <% contacts.forEach(c => { %>
+              <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-pink-50 cursor-pointer transition-colors contact-row" data-name="<%= c.name.toLowerCase() %> <%= c.phone %>">
+                <input type="checkbox" name="contactIds" value="<%= c.id %>" class="contact-checkbox rounded border-pink-300 text-pink-500 focus:ring-pink-200">
+                <span class="text-sm text-gray-700"><%= c.name %> <span class="text-xs text-gray-400">(<%= c.phone %>)</span></span>
+              </label>
+            <% }); %>
+          </div>
+          <p class="text-xs text-gray-400 mt-1">Selected: <span id="selectedCount">0</span> contacts</p>
+        </div>
+      </div>
+
+      <input type="hidden" name="type" id="scheduleMsgType" value="text">
+      <input type="hidden" name="interactiveData" id="scheduleInteractiveData">
+
+      <div class="mt-3">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Content *</label>
+        <textarea name="content" id="scheduleContent" rows="3" required class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm"></textarea>
+      </div>
+
+      <!-- Poll Preview Panel -->
+      <div id="schedulePollPanel" class="hidden mt-3 bg-pink-50 rounded-xl p-3 border border-pink-100">
+        <label class="block text-xs font-medium text-gray-700 mb-1">Poll Question</label>
+        <input type="text" id="schedulePollQuestion" readonly class="w-full px-3 py-2 rounded-lg border border-pink-200 bg-white text-sm">
+        <label class="block text-xs font-medium text-gray-700 mb-1 mt-2">Options</label>
+        <textarea id="schedulePollOptions" readonly rows="3" class="w-full px-3 py-2 rounded-lg border border-pink-200 bg-white text-sm"></textarea>
+        <p class="text-xs text-pink-600 mt-1"><i class="ri-information-line"></i> Poll will be sent with these options at scheduled time.</p>
+      </div>
+      <div class="grid grid-cols-2 gap-4 mt-3">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Schedule Time *</label>
+          <input type="datetime-local" name="scheduleTime" required class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm">
+          <input type="hidden" name="timezoneOffset" id="scheduleTzOffset" value="">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Repeat</label>
+          <select name="repeatPattern" class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm bg-white">
+            <option value="">No repeat</option>
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+          </select>
+        </div>
+      </div>
+      <div class="flex gap-3 justify-end mt-4">
+        <button type="button" onclick="document.getElementById('scheduleModal').close()" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+        <button type="submit" class="px-6 py-2 btn-pink text-white text-sm font-medium rounded-lg"><i class="ri-calendar-check-line"></i> Schedule</button>
+      </div>
+    </form>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+<script>
+// Set browser timezone offset on form open
+document.getElementById('scheduleModal').addEventListener('show', function() {
+  document.getElementById('scheduleTzOffset').value = new Date().getTimezoneOffset();
+});
+
+function fillTemplate(select) {
+  const option = select.options[select.selectedIndex];
+  const pollPanel = document.getElementById('schedulePollPanel');
+  const contentEl = document.getElementById('scheduleContent');
+  const typeEl = document.getElementById('scheduleMsgType');
+  const intDataEl = document.getElementById('scheduleInteractiveData');
+
+  if (!option.value) {
+    if (contentEl) contentEl.value = '';
+    if (typeEl) typeEl.value = 'text';
+    if (intDataEl) intDataEl.value = '';
+    if (pollPanel) pollPanel.classList.add('hidden');
+    return;
+  }
+
+  const decodeHtml = (str) => (str || '').replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+  const type = option.dataset.type || 'text';
+
+  if (type === 'poll') {
+    if (contentEl) contentEl.value = decodeHtml(option.dataset.content) || '';
+    if (typeEl) typeEl.value = 'poll';
+    try {
+      const vars = JSON.parse(decodeHtml(option.dataset.variables) || '{}');
+      if (vars.pollOptions && vars.pollOptions.length >= 2) {
+        const qEl = document.getElementById('schedulePollQuestion');
+        const oEl = document.getElementById('schedulePollOptions');
+        if (qEl) qEl.value = decodeHtml(option.dataset.content) || '';
+        if (oEl) oEl.value = vars.pollOptions.join('\n');
+        if (intDataEl) {
+          intDataEl.value = JSON.stringify({
+            options: vars.pollOptions,
+            allowMultipleAnswers: vars.allowMultipleAnswers === true,
+          });
+        }
+        if (pollPanel) pollPanel.classList.remove('hidden');
+      }
+    } catch (e) {}
+  } else {
+    if (contentEl) contentEl.value = decodeHtml(option.dataset.content) || '';
+    if (typeEl) typeEl.value = type;
+    if (intDataEl) intDataEl.value = '';
+    if (pollPanel) pollPanel.classList.add('hidden');
+  }
+}
+
+function filterContacts() {
+  const query = document.getElementById('contactSearch').value.toLowerCase();
+  document.querySelectorAll('.contact-row').forEach(row => {
+    const name = row.dataset.name;
+    row.style.display = name.includes(query) ? 'flex' : 'none';
+  });
+}
+
+function selectAllContacts() {
+  document.querySelectorAll('.contact-row:not([style*="none"]) .contact-checkbox').forEach(cb => cb.checked = true);
+  updateSelectedCount();
+}
+
+function deselectAllContacts() {
+  document.querySelectorAll('.contact-checkbox').forEach(cb => cb.checked = false);
+  updateSelectedCount();
+}
+
+function updateSelectedCount() {
+  const count = document.querySelectorAll('.contact-checkbox:checked').length;
+  document.getElementById('selectedCount').textContent = count;
+}
+
+document.querySelectorAll('.contact-checkbox').forEach(cb => {
+  cb.addEventListener('change', updateSelectedCount);
+});
+
+document.getElementById('scheduleForm').addEventListener('submit', function(e) {
+  const checked = document.querySelectorAll('.contact-checkbox:checked');
+  if (checked.length === 0) {
+    e.preventDefault();
+    alert('Please select at least one contact');
+    return false;
+  }
+});
+</script>

@@ -1,0 +1,101 @@
+<div class="mb-6">
+  <h2 class="text-xl font-bold text-gray-900">Landing Page Enquiries</h2>
+  <p class="text-sm text-gray-500">All enquiries submitted from the landing page contact form</p>
+</div>
+
+<div class="flex gap-3 mb-6 flex-wrap">
+  <a href="/admin" class="px-5 py-2.5 bg-white border border-pink-200 text-pink-600 text-sm font-medium rounded-xl hover:bg-pink-50 transition-colors flex items-center gap-2">
+    <i class="ri-arrow-left-line"></i> Back to Admin
+  </a>
+  <a href="/admin/service-packages" class="px-5 py-2.5 bg-white border border-pink-200 text-pink-600 text-sm font-medium rounded-xl hover:bg-pink-50 transition-colors flex items-center gap-2">
+    <i class="ri-stack-line"></i> Service Packages
+  </a>
+  <a href="/admin/credits" class="px-5 py-2.5 bg-white border border-pink-200 text-pink-600 text-sm font-medium rounded-xl hover:bg-pink-50 transition-colors flex items-center gap-2">
+    <i class="ri-coins-line"></i> Credit Config
+  </a>
+</div>
+
+<div class="bg-white rounded-2xl border border-pink-100 overflow-hidden">
+  <div class="p-5 border-b border-pink-100 flex items-center justify-between">
+    <h3 class="font-semibold text-gray-900">Enquiries</h3>
+    <span class="text-xs text-gray-500"><%= enquiries.length %> total</span>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-gray-50 border-b border-pink-100">
+        <tr>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">ID</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Name</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Enterprise</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Phone</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Email</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Message</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Status</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Date</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Action</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        <% enquiries.forEach(e => { %>
+          <tr class="hover:bg-pink-50/50 transition-colors" data-id="<%= e.id %>">
+            <td class="px-6 py-4 text-gray-900 font-medium">#<%= e.id %></td>
+            <td class="px-6 py-4 text-gray-900"><%= e.name %></td>
+            <td class="px-6 py-4 text-gray-500"><%= e.enterpriseName || '-' %></td>
+            <td class="px-6 py-4 text-gray-500"><%= e.phone %></td>
+            <td class="px-6 py-4 text-gray-500"><%= e.email %></td>
+            <td class="px-6 py-4 text-xs text-gray-500 max-w-xs truncate"><%= e.message || '-' %></td>
+            <td class="px-6 py-4">
+              <span class="status-badge text-xs px-2.5 py-1 rounded-full capitalize
+                <%= e.status === 'new' ? 'bg-blue-100 text-blue-600' :
+                   e.status === 'contacted' ? 'bg-yellow-100 text-yellow-600' :
+                   e.status === 'qualified' ? 'bg-purple-100 text-purple-600' :
+                   e.status === 'converted' ? 'bg-green-100 text-green-600' :
+                   'bg-red-100 text-red-600' %>">
+                <%= e.status %>
+              </span>
+            </td>
+            <td class="px-6 py-4 text-xs text-gray-500"><%= new Date(e.createdAt).toLocaleString() %></td>
+            <td class="px-6 py-4">
+              <select onchange="updateStatus(<%= e.id %>, this.value)" class="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-pink-200">
+                <option value="new" <%= e.status === 'new' ? 'selected' : '' %>>New</option>
+                <option value="contacted" <%= e.status === 'contacted' ? 'selected' : '' %>>Contacted</option>
+                <option value="qualified" <%= e.status === 'qualified' ? 'selected' : '' %>>Qualified</option>
+                <option value="converted" <%= e.status === 'converted' ? 'selected' : '' %>>Converted</option>
+                <option value="lost" <%= e.status === 'lost' ? 'selected' : '' %>>Lost</option>
+              </select>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+  <% if (!enquiries || enquiries.length === 0) { %>
+    <div class="p-8 text-center">
+      <div class="w-16 h-16 rounded-full bg-pink-50 flex items-center justify-center mx-auto mb-3">
+        <i class="ri-mail-open-line text-2xl text-pink-300"></i>
+      </div>
+      <p class="text-sm text-gray-500">No enquiries yet</p>
+    </div>
+  <% } %>
+</div>
+
+<script>
+async function updateStatus(id, status) {
+  try {
+    const res = await fetch(`/landing/api/enquiries/${id}/status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status })
+    });
+    const data = await res.json();
+    if (data.success) {
+      // Flash a toast or reload
+      window.location.reload();
+    } else {
+      alert(data.error || 'Failed to update status');
+    }
+  } catch (err) {
+    alert('Error: ' + err.message);
+  }
+}
+</script>

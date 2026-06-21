@@ -1,0 +1,892 @@
+<div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+  <div>
+    <h2 class="text-xl font-bold text-gray-900">Leads</h2>
+    <p class="text-sm text-gray-500">Manage leads from forms, scraper, and manual entry</p>
+  </div>
+  <div class="flex gap-2">
+    <a href="/leads/download-csv?<%= pagination.baseQuery %>" class="px-4 py-2.5 bg-white border border-green-200 text-green-600 text-sm font-medium rounded-xl hover:bg-green-50 transition-colors flex items-center gap-2">
+      <i class="ri-file-download-line"></i> Export CSV
+    </a>
+    <button onclick="document.getElementById('addLeadModal').showModal()" class="px-4 py-2.5 bg-white border border-pink-200 text-pink-600 text-sm font-medium rounded-xl hover:bg-pink-50 transition-colors flex items-center gap-2">
+      <i class="ri-add-line"></i> Add Lead
+    </button>
+    <button onclick="document.getElementById('colToggleModal').showModal()" class="px-4 py-2.5 bg-white border border-gray-200 text-gray-600 text-sm font-medium rounded-xl hover:bg-gray-50 transition-colors flex items-center gap-2">
+      <i class="ri-settings-3-line"></i> Columns
+    </button>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="bg-white rounded-2xl border border-pink-100 p-4 mb-6">
+  <div class="flex flex-col sm:flex-row gap-3">
+    <div class="flex-1 relative">
+      <i class="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+      <input type="text" name="search" form="colSearchForm" value="<%= search %>" placeholder="Search name, phone, email..."
+        class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm">
+    </div>
+    <select name="source" form="colSearchForm" class="px-4 py-2.5 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm bg-white">
+      <option value="">All Sources</option>
+      <option value="form" <%= sourceFilter === 'form' ? 'selected' : '' %>>Form</option>
+      <option value="scraper" <%= sourceFilter === 'scraper' ? 'selected' : '' %>>Scraper</option>
+      <option value="manual" <%= sourceFilter === 'manual' ? 'selected' : '' %>>Manual</option>
+      <option value="api" <%= sourceFilter === 'api' ? 'selected' : '' %>>API</option>
+      <option value="poll_vote" <%= sourceFilter === 'poll_vote' ? 'selected' : '' %>>Poll Vote</option>
+    </select>
+    <select name="formFilter" form="colSearchForm" class="px-4 py-2.5 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm bg-white">
+      <option value="">All Forms</option>
+      <% forms.forEach(form => { %>
+        <option value="<%= form.id %>" <%= formFilter == form.id ? 'selected' : '' %>><%= form.title %></option>
+      <% }); %>
+    </select>
+    <select name="status" form="colSearchForm" class="px-4 py-2.5 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm bg-white">
+      <option value="">All Status</option>
+      <option value="new" <%= statusFilter === 'new' ? 'selected' : '' %>>New</option>
+      <option value="contacted" <%= statusFilter === 'contacted' ? 'selected' : '' %>>Contacted</option>
+      <option value="qualified" <%= statusFilter === 'qualified' ? 'selected' : '' %>>Qualified</option>
+      <option value="converted" <%= statusFilter === 'converted' ? 'selected' : '' %>>Converted</option>
+      <option value="lost" <%= statusFilter === 'lost' ? 'selected' : '' %>>Lost</option>
+    </select>
+    <input type="date" name="dateFrom" form="colSearchForm" value="<%= dateFrom %>" title="From Date"
+      class="px-3 py-2.5 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm bg-white">
+    <input type="date" name="dateTo" form="colSearchForm" value="<%= dateTo %>" title="To Date"
+      class="px-3 py-2.5 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm bg-white">
+    <button type="submit" form="colSearchForm" class="px-5 py-2.5 btn-pink text-white text-sm font-medium rounded-xl hover:shadow-lg transition-all">
+      <i class="ri-filter-search-line"></i>
+    </button>
+  </div>
+</div>
+
+<!-- Column Toggle Modal -->
+<dialog id="colToggleModal" class="modal">
+  <div class="modal-box bg-white rounded-2xl max-w-sm">
+    <h3 class="font-bold text-lg text-gray-900 mb-4">Show / Hide Columns</h3>
+    <div class="space-y-2" id="colToggleList">
+      <!-- Populated by JS -->
+    </div>
+    <div class="flex gap-3 justify-end mt-4">
+      <button type="button" onclick="document.getElementById('colToggleModal').close()" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Close</button>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+<!-- Leads Table -->
+<style>
+  .lead-table-wrap { border: 1px solid #f3f4f6; border-radius: 16px; overflow: hidden; background: #fff; }
+  .lead-table { width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; }
+  .lead-table thead th {
+    background: #fdf2f8; padding: 10px 10px; font-size: 12px; font-weight: 600; color: #6b7280;
+    text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid #fce7f3;
+    white-space: nowrap; position: relative; user-select: none; overflow: hidden;
+  }
+  .lead-table tbody td {
+    padding: 12px 10px; font-size: 13px; color: #374151; border-bottom: 1px solid #f9fafb;
+    vertical-align: middle; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .lead-table tbody tr:hover { background: #fdf2f8; }
+  .lead-table tbody tr:last-child td { border-bottom: none; }
+  .lead-table tbody tr.expanded td { border-bottom: none; }
+  .lead-table .detail-row td { background: #fafafa; border-bottom: 1px solid #f3f4f6; padding: 16px 20px; white-space: normal; }
+
+  /* Column resize handle */
+  .resize-handle {
+    position: absolute; right: 0; top: 0; bottom: 0; width: 4px; cursor: col-resize;
+    background: transparent; z-index: 10;
+  }
+  .resize-handle:hover { background: #ec4899; }
+
+  /* Sort buttons */
+  .sort-btn { cursor: pointer; user-select: none; display: inline-flex; align-items: center; gap: 4px; color: inherit; text-decoration: none; }
+  .sort-btn:hover { color: #ec4899; }
+  .sort-active { color: #ec4899; }
+
+  /* Column search inputs */
+  .th-search { margin-top: 6px; width: 100%; }
+  .th-search input {
+    width: 100%; padding: 4px 6px; border-radius: 6px; border: 1px solid #fce7f3;
+    background: #fff; font-size: 11px; color: #374151; outline: none; font-weight: 400;
+    text-transform: none; letter-spacing: normal;
+  }
+  .th-search input:focus { border-color: #ec4899; box-shadow: 0 0 0 2px rgba(236,72,153,0.1); }
+  .th-search input::placeholder { color: #d1d5db; font-size: 10px; }
+
+  /* Pagination */
+  .page-btn { min-width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 10px; font-size: 13px; font-weight: 500; border: 1px solid #e5e7eb; background: #fff;
+    color: #374151; transition: all 0.15s; cursor: pointer; text-decoration: none; }
+  .page-btn:hover { border-color: #ec4899; color: #ec4899; }
+  .page-btn.active { background: #ec4899; color: #fff; border-color: #ec4899; }
+  .page-btn.disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
+  .per-page-select { padding: 6px 28px 6px 12px; border-radius: 10px; border: 1px solid #e5e7eb;
+    background: #fff url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") right 8px center/16px no-repeat;
+    font-size: 13px; color: #374151; appearance: none; -webkit-appearance: none; cursor: pointer; }
+
+  /* Form data grid in detail row */
+  .form-data-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px 16px; }
+  .form-data-item { display: flex; flex-direction: column; }
+  .form-data-item label { font-size: 10px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.05em; }
+  .form-data-item span { font-size: 12px; color: #374151; word-break: break-word; }
+  .form-data-item .media-thumb {
+    width: 100%; max-width: 180px; height: 100px; object-fit: cover; border-radius: 8px;
+    cursor: pointer; border: 1px solid #e5e7eb; transition: transform 0.2s;
+  }
+  .form-data-item .media-thumb:hover { transform: scale(1.02); }
+  .form-data-item .file-link {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 8px; background: #f3f4f6; border-radius: 6px;
+    font-size: 11px; color: #374151; text-decoration: none;
+  }
+  .form-data-item .file-link:hover { background: #e5e7eb; }
+
+  /* Lightbox */
+  .lightbox { position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,0.85);
+    display: none; align-items: center; justify-content: center; padding: 20px; }
+  .lightbox.active { display: flex; }
+  .lightbox img, .lightbox video { max-width: 90vw; max-height: 90vh; border-radius: 12px; }
+  .lightbox-close { position: absolute; top: 16px; right: 16px; color: #fff; font-size: 28px;
+    cursor: pointer; background: rgba(0,0,0,0.5); width: 40px; height: 40px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; }
+  .lightbox-close:hover { background: rgba(0,0,0,0.7); }
+</style>
+
+<!-- Hidden search form -->
+<form method="GET" action="/leads" id="colSearchForm" class="mb-4 flex items-center gap-3">
+  <a href="/leads" class="px-4 py-2 text-gray-500 text-xs font-medium border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
+    <i class="ri-refresh-line mr-1"></i> Clear Filters
+  </a>
+  <div class="ml-auto flex items-center gap-2">
+    <span class="text-xs text-gray-500">Show</span>
+    <select name="perPage" class="per-page-select" onchange="this.form.submit()">
+      <option value="10" <%= pagination.perPage === 10 ? 'selected' : '' %>>10</option>
+      <option value="30" <%= pagination.perPage === 30 ? 'selected' : '' %>>30</option>
+      <option value="50" <%= pagination.perPage === 50 ? 'selected' : '' %>>50</option>
+    </select>
+  </div>
+  <input type="hidden" name="sort" value="<%= sortCol || '' %>">
+  <input type="hidden" name="dir" value="<%= sortDir || 'desc' %>">
+</form>
+
+<div class="lead-table-wrap">
+  <table class="lead-table" id="leadTable">
+    <thead>
+      <tr id="leadTableHeader">
+        <th style="width:40px" data-col="checkbox"><input type="checkbox" id="selectAll" class="rounded border-gray-300 text-pink-600 focus:ring-pink-500 cursor-pointer"></th>
+        <th style="width:50px" data-col="sno" data-default-width="50px">S.No<div class="resize-handle"></div></th>
+        <th style="width:180px" data-col="name" data-default-width="180px">
+          <a href="/leads?<%= pagination.baseQuery %>&sort=name&dir=<%= (sortCol === 'name' && sortDir === 'asc') ? 'desc' : 'asc' %>" class="sort-btn <%= sortCol === 'name' ? 'sort-active' : '' %>">
+            Name <% if (sortCol === 'name') { %><i class="ri-arrow-<%= sortDir === 'asc' ? 'up' : 'down' %>-line text-xs"></i><% } else { %><i class="ri-arrow-up-down-line text-xs text-gray-300"></i><% } %>
+          </a>
+          <div class="th-search"><input type="text" form="colSearchForm" name="search_name" value="<%= (columnFilters && columnFilters['name']) || '' %>" placeholder="Filter name..." oninput="delayedSubmit(document.getElementById('colSearchForm'))"></div>
+          <div class="resize-handle"></div>
+        </th>
+        <th style="width:130px" data-col="phone" data-default-width="130px">
+          <a href="/leads?<%= pagination.baseQuery %>&sort=phone&dir=<%= (sortCol === 'phone' && sortDir === 'asc') ? 'desc' : 'asc' %>" class="sort-btn <%= sortCol === 'phone' ? 'sort-active' : '' %>">
+            Phone <% if (sortCol === 'phone') { %><i class="ri-arrow-<%= sortDir === 'asc' ? 'up' : 'down' %>-line text-xs"></i><% } else { %><i class="ri-arrow-up-down-line text-xs text-gray-300"></i><% } %>
+          </a>
+          <div class="th-search"><input type="text" form="colSearchForm" name="search_phone" value="<%= (columnFilters && columnFilters['phone']) || '' %>" placeholder="Filter phone..." oninput="delayedSubmit(document.getElementById('colSearchForm'))"></div>
+          <div class="resize-handle"></div>
+        </th>
+        <th style="width:160px" data-col="email" data-default-width="160px">
+          <a href="/leads?<%= pagination.baseQuery %>&sort=email&dir=<%= (sortCol === 'email' && sortDir === 'asc') ? 'desc' : 'asc' %>" class="sort-btn <%= sortCol === 'email' ? 'sort-active' : '' %>">
+            Email <% if (sortCol === 'email') { %><i class="ri-arrow-<%= sortDir === 'asc' ? 'up' : 'down' %>-line text-xs"></i><% } else { %><i class="ri-arrow-up-down-line text-xs text-gray-300"></i><% } %>
+          </a>
+          <div class="th-search"><input type="text" form="colSearchForm" name="search_email" value="<%= (columnFilters && columnFilters['email']) || '' %>" placeholder="Filter email..." oninput="delayedSubmit(document.getElementById('colSearchForm'))"></div>
+          <div class="resize-handle"></div>
+        </th>
+        <th style="width:110px" data-col="source" data-default-width="110px">
+          <a href="/leads?<%= pagination.baseQuery %>&sort=source&dir=<%= (sortCol === 'source' && sortDir === 'asc') ? 'desc' : 'asc' %>" class="sort-btn <%= sortCol === 'source' ? 'sort-active' : '' %>">
+            Source <% if (sortCol === 'source') { %><i class="ri-arrow-<%= sortDir === 'asc' ? 'up' : 'down' %>-line text-xs"></i><% } else { %><i class="ri-arrow-up-down-line text-xs text-gray-300"></i><% } %>
+          </a>
+          <div class="resize-handle"></div>
+        </th>
+        <th style="width:110px" data-col="status" data-default-width="110px">
+          <a href="/leads?<%= pagination.baseQuery %>&sort=status&dir=<%= (sortCol === 'status' && sortDir === 'asc') ? 'desc' : 'asc' %>" class="sort-btn <%= sortCol === 'status' ? 'sort-active' : '' %>">
+            Status <% if (sortCol === 'status') { %><i class="ri-arrow-<%= sortDir === 'asc' ? 'up' : 'down' %>-line text-xs"></i><% } else { %><i class="ri-arrow-up-down-line text-xs text-gray-300"></i><% } %>
+          </a>
+          <div class="resize-handle"></div>
+        </th>
+        <th style="width:110px" data-col="createdAt" data-default-width="110px">
+          <a href="/leads?<%= pagination.baseQuery %>&sort=createdAt&dir=<%= (sortCol === 'createdAt' && sortDir === 'asc') ? 'desc' : 'asc' %>" class="sort-btn <%= sortCol === 'createdAt' ? 'sort-active' : '' %>">
+            Date <% if (sortCol === 'createdAt') { %><i class="ri-arrow-<%= sortDir === 'asc' ? 'up' : 'down' %>-line text-xs"></i><% } else { %><i class="ri-arrow-up-down-line text-xs text-gray-300"></i><% } %>
+          </a>
+          <div class="th-search"><input type="text" form="colSearchForm" name="search_createdAt" value="<%= (columnFilters && columnFilters['createdAt']) || '' %>" placeholder="Filter date..." oninput="delayedSubmit(document.getElementById('colSearchForm'))"></div>
+          <div class="resize-handle"></div>
+        </th>
+        <th style="width:140px" data-col="actions" data-default-width="140px">Actions<div class="resize-handle"></div></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (!leads || leads.length === 0) { %>
+        <tr><td colspan="9" class="text-center py-12 text-gray-400"><i class="ri-inbox-line text-4xl mb-2 block"></i><p class="text-sm">No leads found</p></td></tr>
+      <% } else { %>
+        <% leads.forEach((lead, idx) => {
+          const sno = (pagination.page - 1) * pagination.perPage + idx + 1;
+          let leadData = {};
+          try { if (lead.data) leadData = JSON.parse(lead.data); } catch (e) {}
+          const src = lead.source || 'manual';
+          const srcColors = { form: 'bg-purple-50 text-purple-600', scraper: 'bg-orange-50 text-orange-600', manual: 'bg-blue-50 text-blue-600', api: 'bg-gray-50 text-gray-600', poll_vote: 'bg-green-50 text-green-600' };
+          const srcIcons = { form: 'ri-survey-line', scraper: 'ri-map-pin-line', manual: 'ri-user-line', api: 'ri-code-line', poll_vote: 'ri-bar-chart-box-line' };
+          const srcCls = srcColors[src] || srcColors.manual;
+          const srcIcon = srcIcons[src] || srcIcons.manual;
+          const statusColors = { new: 'bg-yellow-100 text-yellow-700', contacted: 'bg-blue-100 text-blue-700', qualified: 'bg-green-100 text-green-700', converted: 'bg-purple-100 text-purple-700', lost: 'bg-gray-100 text-gray-600' };
+          const statusCls = statusColors[lead.status] || statusColors.new;
+        %>
+        <tr data-lead-id="<%= lead.id %>">
+          <td><input type="checkbox" class="row-checkbox rounded border-gray-300 text-pink-600 focus:ring-pink-500 cursor-pointer" value="<%= lead.id %>"></td>
+          <td><span class="text-xs text-gray-400 font-mono"><%= sno %></span></td>
+          <td>
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-full bg-gradient-to-br from-pink-400 to-pink-600 flex items-center justify-center text-white font-bold text-xs flex-shrink-0"><%= (lead.name || '?').charAt(0).toUpperCase() %></div>
+              <div class="min-w-0">
+                <div class="flex items-center gap-1.5">
+                  <p class="font-medium text-gray-900 text-sm truncate"><%= lead.name || 'Unknown' %></p>
+                  <% const hasFiles = Object.values(leadData).some(v => String(v).startsWith('/uploads/')); %>
+                  <% if (hasFiles) { %>
+                    <span class="text-[10px] bg-pink-50 text-pink-500 px-1.5 py-0.5 rounded flex items-center gap-0.5" title="Has attachments"><i class="ri-attachment-2"></i></span>
+                  <% } %>
+                </div>
+                <% if (lead.email) { %><p class="text-[10px] text-gray-500 truncate"><%= lead.email %></p><% } %>
+              </div>
+            </div>
+          </td>
+          <td class="font-mono text-xs"><%= lead.phone || '-' %></td>
+          <td class="text-xs text-gray-600"><%= lead.email || '-' %></td>
+          <td><span class="text-xs <%= srcCls %> px-2 py-0.5 rounded-full capitalize inline-flex items-center gap-1"><i class="<%= srcIcon %>"></i> <%= src.replace('_', ' ') %></span></td>
+          <td><span class="text-xs <%= statusCls %> px-2 py-0.5 rounded-full capitalize"><%= lead.status || 'new' %></span></td>
+          <td class="text-xs text-gray-500"><%= new Date(lead.createdAt).toLocaleDateString() %></td>
+          <td>
+            <div class="flex items-center gap-1">
+              <button type="button" onclick="viewLeadDetails(<%= lead.id %>)" class="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg" title="View Details"><i class="ri-eye-line"></i></button>
+              <button type="button" onclick="editLead(<%= lead.id %>, '<%= (lead.name || '').replace(/'/g, "\\'") %>', '<%= lead.status %>', '<%= (lead.notes || '').replace(/'/g, "\\'") %>', '<%= (lead.tags || '').replace(/'/g, "\\'") %>')" class="p-1.5 text-gray-500 hover:bg-gray-100 rounded-lg" title="Edit"><i class="ri-edit-line"></i></button>
+              <form action="/leads/update/<%= lead.id %>" method="POST" class="inline">
+                <select name="status" onchange="this.form.submit()" class="text-[10px] px-1.5 py-1 rounded border border-gray-200 bg-white">
+                  <option value="new" <%= lead.status==='new'?'selected':'' %>>New</option>
+                  <option value="contacted" <%= lead.status==='contacted'?'selected':'' %>>Contacted</option>
+                  <option value="qualified" <%= lead.status==='qualified'?'selected':'' %>>Qualified</option>
+                  <option value="converted" <%= lead.status==='converted'?'selected':'' %>>Converted</option>
+                  <option value="lost" <%= lead.status==='lost'?'selected':'' %>>Lost</option>
+                </select>
+              </form>
+              <form action="/leads/delete/<%= lead.id %>" method="POST" class="inline" onsubmit="return confirm('Delete this lead?')">
+                <button type="submit" class="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"><i class="ri-delete-bin-line"></i></button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        <!-- Expandable detail row -->
+        <tr id="detail-<%= lead.id %>" class="detail-row hidden">
+          <td colspan="9">
+            <div class="flex flex-col gap-3">
+              <div class="flex items-center justify-between">
+                <h4 class="text-sm font-semibold text-gray-800"><i class="ri-information-line text-pink-500 mr-1"></i> Lead Details #<%= lead.id %></h4>
+                <button onclick="document.getElementById('detail-<%= lead.id %>').classList.add('hidden')" class="text-xs text-gray-400 hover:text-gray-600"><i class="ri-close-line"></i> Close</button>
+              </div>
+              <div class="form-data-grid">
+                <div class="form-data-item"><label>ID</label><span><%= lead.id %></span></div>
+                <div class="form-data-item"><label>Name</label><span><%= lead.name || '-' %></span></div>
+                <div class="form-data-item"><label>Phone</label><span><%= lead.phone || '-' %></span></div>
+                <div class="form-data-item"><label>Email</label><span><%= lead.email || '-' %></span></div>
+                <div class="form-data-item"><label>Country Code</label><span><%= lead.countryCode || '-' %></span></div>
+                <div class="form-data-item"><label>Source</label><span class="capitalize"><%= lead.source || '-' %></span></div>
+                <div class="form-data-item"><label>Status</label><span class="capitalize"><%= lead.status || '-' %></span></div>
+                <div class="form-data-item"><label>Tags</label><span><%= lead.tags || '-' %></span></div>
+                <div class="form-data-item"><label>Created</label><span><%= new Date(lead.createdAt).toLocaleString() %></span></div>
+                <div class="form-data-item"><label>Last Contacted</label><span><%= lead.lastContactedAt ? new Date(lead.lastContactedAt).toLocaleString() : 'Never' %></span></div>
+                <div class="form-data-item"><label>Notes</label><span><%= lead.notes || '-' %></span></div>
+              </div>
+              <% if (Object.keys(leadData).length > 0) { %>
+                <div class="mt-2 pt-3 border-t border-gray-200">
+                  <h5 class="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide"><i class="ri-survey-line mr-1 text-purple-500"></i> Form Submission Data</h5>
+                  <div class="form-data-grid">
+                    <% Object.entries(leadData).forEach(([key, val]) => {
+                      const strVal = val !== undefined && val !== null ? String(val) : '';
+                      const isImagePath = strVal.startsWith('/uploads/') && /\.(jpg|jpeg|png|webp|gif|bmp|svg)$/i.test(strVal);
+                      const isVideoPath = strVal.startsWith('/uploads/') && /\.(mp4|mov|webm|mkv|avi)$/i.test(strVal);
+                      const isFilePath = strVal.startsWith('/uploads/') && !isImagePath && !isVideoPath;
+                    %>
+                      <div class="form-data-item">
+                        <label><%= key %></label>
+                        <% if (isImagePath) { %>
+                          <img src="<%= strVal %>" class="media-thumb" onclick="openLightbox('image', '<%= strVal %>')" title="Click to view full size">
+                          <a href="<%= strVal %>" download class="file-link mt-1"><i class="ri-download-line"></i> Download</a>
+                        <% } else if (isVideoPath) { %>
+                          <video src="<%= strVal %>" class="media-thumb" onclick="openLightbox('video', '<%= strVal %>')" title="Click to play"></video>
+                          <a href="<%= strVal %>" download class="file-link mt-1"><i class="ri-download-line"></i> Download</a>
+                        <% } else if (isFilePath) { %>
+                          <a href="<%= strVal %>" download class="file-link"><i class="ri-file-line"></i> <%= strVal.split('/').pop() %></a>
+                        <% } else { %>
+                          <span><%= strVal || '-' %></span>
+                        <% } %>
+                      </div>
+                    <% }); %>
+                  </div>
+                </div>
+              <% } %>
+            </div>
+          </td>
+        </tr>
+        <% }); %>
+      <% } %>
+    </tbody>
+  </table>
+</div>
+
+<!-- Pagination -->
+<div class="flex flex-wrap items-center justify-between gap-3 mt-4 px-2">
+  <div class="text-xs text-gray-500">
+    Showing <span class="font-semibold text-gray-700"><%= (pagination.page - 1) * pagination.perPage + 1 %></span>
+    – <span class="font-semibold text-gray-700"><%= Math.min(pagination.page * pagination.perPage, pagination.total) %></span>
+    of <span class="font-semibold text-gray-700"><%= pagination.total %></span> leads
+  </div>
+  <div class="flex items-center gap-2">
+    <a href="/leads?<%= pagination.baseQuery %>&page=<%= pagination.page - 1 %>" class="page-btn <%= pagination.hasPrev ? '' : 'disabled' %>"><i class="ri-arrow-left-s-line"></i></a>
+    <% if (pagination.startPage > 1) { %>
+      <a href="/leads?<%= pagination.baseQuery %>&page=1" class="page-btn">1</a>
+      <% if (pagination.startPage > 2) { %><span class="text-gray-400 text-sm px-1">...</span><% } %>
+    <% } %>
+    <% pagination.pageRange.forEach(p => { %>
+      <a href="/leads?<%= pagination.baseQuery %>&page=<%= p %>" class="page-btn <%= p === pagination.page ? 'active' : '' %>"><%= p %></a>
+    <% }); %>
+    <% if (pagination.endPage < pagination.totalPages) { %>
+      <% if (pagination.endPage < pagination.totalPages - 1) { %><span class="text-gray-400 text-sm px-1">...</span><% } %>
+      <a href="/leads?<%= pagination.baseQuery %>&page=<%= pagination.totalPages %>" class="page-btn"><%= pagination.totalPages %></a>
+    <% } %>
+    <a href="/leads?<%= pagination.baseQuery %>&page=<%= pagination.page + 1 %>" class="page-btn <%= pagination.hasNext ? '' : 'disabled' %>"><i class="ri-arrow-right-s-line"></i></a>
+  </div>
+</div>
+
+<script>
+// Lead details view
+const leadsData = <%- JSON.stringify(leads.map(l => {
+  let d = {};
+  try { if (l.data) d = JSON.parse(l.data); } catch(e){}
+  return { id: l.id, name: l.name, phone: l.phone, email: l.email, countryCode: l.countryCode, source: l.source, status: l.status, tags: l.tags, notes: l.notes, createdAt: l.createdAt, lastContactedAt: l.lastContactedAt, data: d };
+})) %>;
+
+function viewLeadDetails(id) {
+  const detailRow = document.getElementById('detail-' + id);
+  if (detailRow) {
+    // Hide all other detail rows
+    document.querySelectorAll('.detail-row').forEach(r => { if (r.id !== 'detail-' + id) r.classList.add('hidden'); });
+    detailRow.classList.toggle('hidden');
+  }
+}
+
+// Column resizing
+(function initColResize() {
+  const table = document.getElementById('leadTable');
+  if (!table) return;
+  const headers = table.querySelectorAll('thead th');
+  let activeHandle = null, startX = 0, startWidth = 0, activeTh = null;
+
+  headers.forEach(th => {
+    const handle = th.querySelector('.resize-handle');
+    if (!handle) return;
+    handle.addEventListener('mousedown', function(e) {
+      e.preventDefault();
+      activeTh = th;
+      activeHandle = handle;
+      startX = e.pageX;
+      startWidth = th.offsetWidth;
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    });
+  });
+
+  document.addEventListener('mousemove', function(e) {
+    if (!activeTh) return;
+    const newWidth = Math.max(40, startWidth + (e.pageX - startX));
+    activeTh.style.width = newWidth + 'px';
+    const colKey = activeTh.dataset.col;
+    if (colKey) localStorage.setItem('lead_col_width_' + colKey, newWidth);
+  });
+
+  document.addEventListener('mouseup', function() {
+    if (activeTh) { activeTh = null; activeHandle = null; document.body.style.cursor = ''; document.body.style.userSelect = ''; }
+  });
+})();
+
+// Restore saved column widths
+(function restoreColWidths() {
+  const table = document.getElementById('leadTable');
+  if (!table) return;
+  table.querySelectorAll('thead th').forEach(th => {
+    const colKey = th.dataset.col;
+    if (!colKey) return;
+    const saved = localStorage.getItem('lead_col_width_' + colKey);
+    if (saved) th.style.width = saved + 'px';
+  });
+})();
+
+// Column visibility toggle
+(function initColToggle() {
+  const cols = [
+    { key: 'sno', label: 'S.No' },
+    { key: 'name', label: 'Name' },
+    { key: 'phone', label: 'Phone' },
+    { key: 'email', label: 'Email' },
+    { key: 'source', label: 'Source' },
+    { key: 'status', label: 'Status' },
+    { key: 'createdAt', label: 'Date' },
+    { key: 'actions', label: 'Actions' },
+  ];
+  const list = document.getElementById('colToggleList');
+  if (!list) return;
+
+  cols.forEach(col => {
+    const saved = localStorage.getItem('lead_col_hide_' + col.key);
+    const isHidden = saved === 'true';
+    const row = document.createElement('label');
+    row.className = 'flex items-center gap-2 cursor-pointer';
+    row.innerHTML = `<input type="checkbox" class="rounded border-gray-300 text-pink-600" ${isHidden ? '' : 'checked'} onchange="toggleColumn('${col.key}', this.checked)"> <span class="text-sm text-gray-700">${col.label}</span>`;
+    list.appendChild(row);
+  });
+
+  // Apply saved visibility on load
+  cols.forEach(col => {
+    const saved = localStorage.getItem('lead_col_hide_' + col.key);
+    if (saved === 'true') toggleColumn(col.key, false);
+  });
+})();
+
+function toggleColumn(key, show) {
+  localStorage.setItem('lead_col_hide_' + key, String(!show));
+  const table = document.getElementById('leadTable');
+  if (!table) return;
+  const th = table.querySelector('th[data-col="' + key + '"]');
+  if (th) th.style.display = show ? '' : 'none';
+  const cells = table.querySelectorAll('td:nth-child(' + (getColIndex(key) + 1) + ')');
+  cells.forEach(td => td.style.display = show ? '' : 'none');
+  // Also hide detail row cells that span - they don't need adjustment
+}
+
+function getColIndex(key) {
+  const table = document.getElementById('leadTable');
+  if (!table) return -1;
+  const headers = Array.from(table.querySelectorAll('thead th'));
+  return headers.findIndex(th => th.dataset.col === key);
+}
+
+let submitTimer = null;
+function delayedSubmit(form) {
+  if (submitTimer) clearTimeout(submitTimer);
+  submitTimer = setTimeout(function() { form.submit(); }, 400);
+}
+</script>
+
+<!-- Bulk WhatsApp + Email Action Bar -->
+<div class="bg-white rounded-2xl border border-pink-100 p-4 mt-4">
+  <div class="flex items-center justify-between">
+    <div>
+      <p class="text-sm font-medium text-gray-900">Bulk Actions</p>
+      <p class="text-xs text-gray-500">Selected: <span id="selectedCount" class="font-semibold text-pink-600">0</span> leads</p>
+    </div>
+    <div class="flex gap-2">
+      <button onclick="deleteSelectedLeads()" class="px-5 py-2.5 bg-white border border-red-200 text-red-600 text-sm font-medium rounded-xl flex items-center gap-2 hover:bg-red-50 transition-all">
+        <i class="ri-delete-bin-line"></i> Delete Selected
+      </button>
+      <button onclick="openEmailModal()" class="px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-xl flex items-center gap-2 hover:shadow-lg transition-all">
+        <i class="ri-mail-send-line"></i> Send Email
+      </button>
+      <button onclick="openWhatsAppModal()" class="px-5 py-2.5 btn-pink text-white text-sm font-medium rounded-xl flex items-center gap-2 hover:shadow-lg transition-all">
+        <i class="ri-send-plane-line"></i> Send WhatsApp
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- WhatsApp Send Modal -->
+<dialog id="whatsappModal" class="modal">
+  <div class="modal-box bg-white rounded-2xl max-w-lg w-full p-6">
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h3 class="font-bold text-lg text-gray-900">Send WhatsApp Message</h3>
+        <p class="text-xs text-gray-500 mt-0.5">Selected: <span id="modalSelectedCount" class="font-semibold text-pink-600">0</span> leads &bull; 35s gap between each message</p>
+      </div>
+      <button onclick="document.getElementById('whatsappModal').close()" class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
+        <i class="ri-close-line text-xl"></i>
+      </button>
+    </div>
+
+    <form id="whatsappForm" action="/leads/send-whatsapp" method="POST" data-no-loading>
+      <input type="hidden" name="leadIds" id="modalLeadIds">
+      <input type="hidden" name="templateId" id="modalTemplateId">
+      <input type="hidden" name="messageType" id="modalMessageType" value="text">
+      <input type="hidden" name="mediaUrl" id="modalMediaUrl" value="">
+
+      <div class="space-y-4">
+        <!-- Session -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">WhatsApp Session *</label>
+          <select id="modalSession" name="sessionId" required class="w-full px-4 py-2.5 rounded-xl border border-pink-200 text-sm bg-white outline-none focus:border-pink-500">
+            <option value="">Select a connected session</option>
+            <% sessions.filter(s => s.status === 'connected').forEach(s => { %>
+              <option value="<%= s.id %>"><%= s.sessionName %></option>
+            <% }); %>
+          </select>
+        </div>
+
+        <!-- Template -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Message Template</label>
+          <select id="modalTemplate" class="w-full px-4 py-2.5 rounded-xl border border-pink-200 text-sm bg-white outline-none focus:border-pink-500" onchange="fillModalTemplate(this)">
+            <option value="">No Template — type custom message</option>
+            <% templates.forEach(t => { %>
+              <option value="<%= t.id %>" data-content="<%= (t.content || '').replace(/"/g, '&quot;') %>" data-type="<%= t.type %>" data-mediaurl="<%= t.mediaUrl || '' %>" data-variables="<%= (t.variables || '').replace(/"/g, '&quot;') %>"><%= t.name %> <%= t.type !== 'text' ? '(' + t.type + ')' : '' %></option>
+            <% }); %>
+          </select>
+        </div>
+
+        <!-- Message -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Message *</label>
+          <textarea id="modalMessage" name="message" rows="4" required placeholder="Type your message here or select a template above..." class="w-full px-4 py-2.5 rounded-xl border border-pink-200 text-sm outline-none focus:border-pink-500 resize-none"></textarea>
+        </div>
+
+        <!-- Poll Preview Panel -->
+        <div id="leadPollPanel" class="hidden bg-pink-50 rounded-xl p-3 border border-pink-100">
+          <label class="block text-xs font-medium text-gray-700 mb-1">Poll Question</label>
+          <input type="text" id="leadPollQuestion" readonly class="w-full px-3 py-2 rounded-lg border border-pink-200 bg-white text-sm">
+          <label class="block text-xs font-medium text-gray-700 mb-1 mt-2">Options</label>
+          <textarea id="leadPollOptions" readonly rows="3" class="w-full px-3 py-2 rounded-lg border border-pink-200 bg-white text-sm"></textarea>
+          <p class="text-xs text-pink-600 mt-1"><i class="ri-information-line"></i> Poll will be sent with these options.</p>
+        </div>
+
+        <!-- Voice Recorder -->
+        <div id="modalRecorderBox">
+          <%- include('../../partials/audio-recorder', { inputId: 'modalMediaUrl', containerId: 'modalRecorderWrap', typeInputId: 'modalMessageType', showMic: false, showFileUpload: true }) %>
+        </div>
+      </div>
+
+      <div class="flex gap-3 justify-end mt-6">
+        <button type="button" onclick="document.getElementById('whatsappModal').close()" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+        <button type="submit" class="px-6 py-2.5 btn-pink text-white text-sm font-medium rounded-xl flex items-center gap-2 hover:shadow-lg transition-all">
+          <i class="ri-send-plane-line"></i> Send Message
+        </button>
+      </div>
+    </form>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+<!-- Email Send Modal -->
+<dialog id="emailModal" class="modal">
+  <div class="modal-box bg-white rounded-2xl max-w-lg w-full p-6">
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h3 class="font-bold text-lg text-gray-900">Send Email to Leads</h3>
+        <p class="text-xs text-gray-500 mt-0.5">Selected: <span id="emailSelectedCount" class="font-semibold text-blue-600">0</span> leads &bull; Only leads with email will receive</p>
+      </div>
+      <button onclick="document.getElementById('emailModal').close()" class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
+        <i class="ri-close-line text-xl"></i>
+      </button>
+    </div>
+
+    <% if (!emailConfig) { %>
+      <div class="p-4 bg-yellow-50 border border-yellow-200 rounded-xl mb-4">
+        <p class="text-sm text-yellow-800"><i class="ri-alert-line mr-1"></i> Email not configured. Please set up your SMTP settings in <a href="/email" class="underline">Email Settings</a> first.</p>
+      </div>
+    <% } %>
+
+    <form id="emailForm" action="/leads/send-email" method="POST" data-no-loading>
+      <input type="hidden" name="leadIds" id="emailLeadIds">
+      <input type="hidden" name="templateId" id="emailTemplateId" value="">
+      <input type="hidden" name="isHtml" id="emailIsHtml" value="false">
+
+      <div class="space-y-4">
+        <!-- Email Template -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Email Template</label>
+          <select id="emailTemplateSelect" class="w-full px-4 py-2.5 rounded-xl border border-pink-200 text-sm bg-white outline-none focus:border-pink-500" onchange="fillEmailTemplate(this)">
+            <option value="">No Template — type custom</option>
+            <% emailTemplates.forEach(t => { %>
+              <option value="<%= t.id %>"
+                data-subject="<%= (t.subject || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;') %>"
+                data-content="<%= (t.content || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/\n/g, '&#10;').replace(/\r/g, '') %>"
+                data-ishtml="<%= t.isHtml ? 'true' : 'false' %>"
+                data-attachments="<%= (t.attachments || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;') %>"><%= t.name %></option>
+            <% }); %>
+          </select>
+        </div>
+
+        <!-- Subject -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Subject *</label>
+          <input type="text" id="emailSubject" name="subject" required placeholder="Enter email subject..." class="w-full px-4 py-2.5 rounded-xl border border-pink-200 text-sm outline-none focus:border-pink-500">
+        </div>
+
+        <!-- Message Body -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Message *</label>
+          <textarea id="emailBody" name="body" rows="6" required placeholder="Type your email message here or select a template above..." class="w-full px-4 py-2.5 rounded-xl border border-pink-200 text-sm outline-none focus:border-pink-500 resize-none"></textarea>
+        </div>
+
+        <!-- HTML toggle -->
+        <div class="flex items-center gap-2">
+          <input type="checkbox" id="emailHtmlToggle" onchange="document.getElementById('emailIsHtml').value = this.checked ? 'true' : 'false'" class="rounded border-gray-300 text-pink-600 focus:ring-pink-500">
+          <label for="emailHtmlToggle" class="text-sm text-gray-600">Send as HTML</label>
+        </div>
+      </div>
+
+      <div class="flex gap-3 justify-end mt-6">
+        <button type="button" onclick="document.getElementById('emailModal').close()" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+        <button type="submit" <%= !emailConfig ? 'disabled' : '' %> class="px-6 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-xl flex items-center gap-2 hover:shadow-lg transition-all <%= !emailConfig ? 'opacity-50 cursor-not-allowed' : '' %>">
+          <i class="ri-mail-send-line"></i> Send Email
+        </button>
+      </div>
+    </form>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+<dialog id="addLeadModal" class="modal">
+  <div class="modal-box bg-white rounded-2xl max-w-lg">
+    <h3 class="font-bold text-lg text-gray-900 mb-4">Add Lead</h3>
+    <form action="/leads/create" method="POST" data-loading-text="Creating lead...">
+      <div class="grid grid-cols-2 gap-4">
+        <div><label class="block text-sm font-medium text-gray-700 mb-1">Name</label><input type="text" name="name" class="w-full px-4 py-2 rounded-xl border border-pink-200 outline-none text-sm"></div>
+        <div><label class="block text-sm font-medium text-gray-700 mb-1">Phone</label><input type="text" name="phone" class="w-full px-4 py-2 rounded-xl border border-pink-200 outline-none text-sm"></div>
+        <div><label class="block text-sm font-medium text-gray-700 mb-1">Email</label><input type="email" name="email" class="w-full px-4 py-2 rounded-xl border border-pink-200 outline-none text-sm"></div>
+        <div><label class="block text-sm font-medium text-gray-700 mb-1">Country Code</label><input type="text" name="countryCode" value="+1" class="w-full px-4 py-2 rounded-xl border border-pink-200 outline-none text-sm"></div>
+      </div>
+      <div><label class="block text-sm font-medium text-gray-700 mb-1">Notes</label><textarea name="notes" rows="2" class="w-full px-4 py-2 rounded-xl border border-pink-200 outline-none text-sm"></textarea></div>
+      <div><label class="block text-sm font-medium text-gray-700 mb-1">Tags</label><input type="text" name="tags" placeholder="vip, hot-lead" class="w-full px-4 py-2 rounded-xl border border-pink-200 outline-none text-sm"></div>
+      <div class="flex gap-3 justify-end">
+        <button type="button" onclick="document.getElementById('addLeadModal').close()" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+        <button type="submit" class="px-6 py-2 btn-pink text-white text-sm font-medium rounded-lg">Save</button>
+      </div>
+    </form>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+<dialog id="editLeadModal" class="modal">
+  <div class="modal-box bg-white rounded-2xl max-w-lg">
+    <h3 class="font-bold text-lg text-gray-900 mb-4">Edit Lead</h3>
+    <form id="editLeadForm" action="" method="POST" data-loading-text="Updating lead...">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+        <select name="status" id="editLeadStatus" class="w-full px-4 py-2 rounded-xl border border-pink-200 outline-none text-sm bg-white">
+          <option value="new">New</option>
+          <option value="contacted">Contacted</option>
+          <option value="qualified">Qualified</option>
+          <option value="converted">Converted</option>
+          <option value="lost">Lost</option>
+        </select>
+      </div>
+      <div><label class="block text-sm font-medium text-gray-700 mb-1">Notes</label><textarea name="notes" id="editLeadNotes" rows="2" class="w-full px-4 py-2 rounded-xl border border-pink-200 outline-none text-sm"></textarea></div>
+      <div><label class="block text-sm font-medium text-gray-700 mb-1">Tags</label><input type="text" name="tags" id="editLeadTags" class="w-full px-4 py-2 rounded-xl border border-pink-200 outline-none text-sm"></div>
+      <div class="flex gap-3 justify-end">
+        <button type="button" onclick="document.getElementById('editLeadModal').close()" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+        <button type="submit" class="px-6 py-2 btn-pink text-white text-sm font-medium rounded-lg">Update</button>
+      </div>
+    </form>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+<script>
+function fillTemplate(select) {
+  const option = select.options[select.selectedIndex];
+  if (option.value) document.getElementById('bulkMessage').value = option.dataset.content;
+}
+
+function fillModalTemplate(select) {
+  const option = select.options[select.selectedIndex];
+  const recorderBox = document.getElementById('modalRecorderBox');
+  const pollPanel = document.getElementById('leadPollPanel');
+  const decodeHtml = (str) => (str || '').replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+
+  if (option.value) {
+    const type = option.dataset.type || 'text';
+    document.getElementById('modalMessage').value = decodeHtml(option.dataset.content) || '';
+    document.getElementById('modalTemplateId').value = option.value;
+    document.getElementById('modalMessageType').value = type;
+    document.getElementById('modalMediaUrl').value = option.dataset.mediaurl || '';
+
+    if (type === 'poll') {
+      if (recorderBox) recorderBox.classList.add('hidden');
+      try {
+        const vars = JSON.parse(decodeHtml(option.dataset.variables) || '{}');
+        if (vars.pollOptions && vars.pollOptions.length >= 2) {
+          const qEl = document.getElementById('leadPollQuestion');
+          const oEl = document.getElementById('leadPollOptions');
+          if (qEl) qEl.value = decodeHtml(option.dataset.content) || '';
+          if (oEl) oEl.value = vars.pollOptions.join('\n');
+          if (pollPanel) pollPanel.classList.remove('hidden');
+        }
+      } catch (e) {}
+    } else {
+      if (pollPanel) pollPanel.classList.add('hidden');
+      if (type === 'audio') {
+        if (recorderBox) recorderBox.classList.add('hidden');
+      } else {
+        if (recorderBox) recorderBox.classList.remove('hidden');
+      }
+    }
+  } else {
+    document.getElementById('modalMessage').value = '';
+    document.getElementById('modalTemplateId').value = '';
+    document.getElementById('modalMessageType').value = 'text';
+    document.getElementById('modalMediaUrl').value = '';
+    if (pollPanel) pollPanel.classList.add('hidden');
+    if (recorderBox) recorderBox.classList.remove('hidden');
+  }
+}
+
+function editLead(id, name, status, notes, tags) {
+  document.getElementById('editLeadForm').action = '/leads/update/' + id;
+  document.getElementById('editLeadStatus').value = status || 'new';
+  document.getElementById('editLeadNotes').value = notes || '';
+  document.getElementById('editLeadTags').value = tags || '';
+  document.getElementById('editLeadModal').showModal();
+}
+
+function getVisibleCheckboxes() {
+  return Array.from(document.querySelectorAll('.row-checkbox')).filter(cb => {
+    const row = cb.closest('tr');
+    return row && row.style.display !== 'none';
+  });
+}
+
+function getVisibleChecked() {
+  return getVisibleCheckboxes().filter(cb => cb.checked);
+}
+
+function deleteSelectedLeads() {
+  const checked = getVisibleChecked();
+  if (checked.length === 0) { alert('Select at least one lead'); return; }
+  if (!confirm('Delete ' + checked.length + ' selected lead(s)? This cannot be undone.')) return;
+
+  const ids = checked.map(cb => cb.value);
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = '/leads/delete-bulk';
+  const input = document.createElement('input');
+  input.type = 'hidden';
+  input.name = 'leadIds';
+  input.value = JSON.stringify(ids);
+  form.appendChild(input);
+  document.body.appendChild(form);
+  form.submit();
+}
+
+function openWhatsAppModal() {
+  const checked = getVisibleChecked();
+  if (checked.length === 0) { alert('Select at least one lead'); return; }
+
+  const ids = checked.map(cb => cb.value);
+  document.getElementById('modalLeadIds').value = JSON.stringify(ids);
+  document.getElementById('modalSelectedCount').textContent = checked.length;
+  document.getElementById('whatsappModal').showModal();
+}
+
+function openEmailModal() {
+  const checked = getVisibleChecked();
+  if (checked.length === 0) { alert('Select at least one lead'); return; }
+
+  const ids = checked.map(cb => cb.value);
+  document.getElementById('emailLeadIds').value = JSON.stringify(ids);
+  document.getElementById('emailSelectedCount').textContent = checked.length;
+  document.getElementById('emailModal').showModal();
+}
+
+function fillEmailTemplate(select) {
+  const option = select.options[select.selectedIndex];
+  const decodeHtml = (str) => (str || '').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&#10;/g, '\n').replace(/&amp;/g, '&');
+  if (option.value) {
+    document.getElementById('emailSubject').value = decodeHtml(option.dataset.subject) || '';
+    document.getElementById('emailBody').value = decodeHtml(option.dataset.content) || '';
+    document.getElementById('emailTemplateId').value = option.value;
+    const isHtml = option.dataset.ishtml === 'true';
+    document.getElementById('emailIsHtml').value = isHtml ? 'true' : 'false';
+    document.getElementById('emailHtmlToggle').checked = isHtml;
+  } else {
+    document.getElementById('emailSubject').value = '';
+    document.getElementById('emailBody').value = '';
+    document.getElementById('emailTemplateId').value = '';
+    document.getElementById('emailIsHtml').value = 'false';
+    document.getElementById('emailHtmlToggle').checked = false;
+  }
+}
+
+// Checkbox selection
+function initCheckboxes() {
+  const selectAll = document.getElementById('selectAll');
+
+  if (selectAll) {
+    selectAll.addEventListener('change', function() {
+      getVisibleCheckboxes().forEach(cb => cb.checked = this.checked);
+      updateCount();
+      syncSelectAllState();
+    });
+  }
+
+  // Use event delegation for row checkboxes (works with pagination/filtering)
+  const tableBody = document.querySelector('.lead-table tbody') || document.querySelector('#leadTable tbody');
+  if (tableBody) {
+    tableBody.addEventListener('change', function(e) {
+      if (e.target.classList.contains('row-checkbox')) {
+        updateCount();
+        syncSelectAllState();
+      }
+    });
+  }
+}
+
+function updateCount() {
+  const checked = getVisibleChecked();
+  const countDisplay = document.getElementById('selectedCount');
+  if (countDisplay) countDisplay.textContent = checked.length;
+}
+
+function syncSelectAllState() {
+  const selectAll = document.getElementById('selectAll');
+  if (!selectAll) return;
+  const visible = getVisibleCheckboxes();
+  if (visible.length === 0) {
+    selectAll.checked = false;
+    selectAll.indeterminate = false;
+    return;
+  }
+  const checkedCount = visible.filter(cb => cb.checked).length;
+  if (checkedCount === 0) {
+    selectAll.checked = false;
+    selectAll.indeterminate = false;
+  } else if (checkedCount === visible.length) {
+    selectAll.checked = true;
+    selectAll.indeterminate = false;
+  } else {
+    selectAll.checked = false;
+    selectAll.indeterminate = true;
+  }
+}
+
+// Lightbox for image/video full view
+function openLightbox(type, src) {
+  let existing = document.getElementById('leadLightbox');
+  if (!existing) {
+    existing = document.createElement('div');
+    existing.id = 'leadLightbox';
+    existing.className = 'lightbox';
+    existing.innerHTML = '<div class="lightbox-close" onclick="closeLightbox()">&times;</div><div id="lightboxContent"></div>';
+    existing.onclick = function(e) { if (e.target === existing) closeLightbox(); };
+    document.body.appendChild(existing);
+  }
+  const content = document.getElementById('lightboxContent');
+  content.innerHTML = type === 'video'
+    ? '<video src="' + src + '" controls autoplay style="max-width:90vw;max-height:90vh;border-radius:12px;"></video>'
+    : '<img src="' + src + '" style="max-width:90vw;max-height:90vh;border-radius:12px;">';
+  existing.classList.add('active');
+}
+function closeLightbox() {
+  const box = document.getElementById('leadLightbox');
+  if (box) box.classList.remove('active');
+}
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeLightbox();
+});
+
+// Initialize on DOM ready
+document.addEventListener('DOMContentLoaded', initCheckboxes);
+</script>

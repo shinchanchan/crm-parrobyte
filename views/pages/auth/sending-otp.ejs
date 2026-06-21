@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <meta name="description" content="Sending OTP for ParroByte CRM login verification.">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="shortcut icon" href="/favicon.svg">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#ec4899">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <noscript><meta http-equiv="refresh" content="5;url=/auth/verify-login-otp"></noscript>
+  <link rel="stylesheet" href="/css/app.css">
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.1.0/fonts/remixicon.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body{font-family:'Inter',sans-serif;}
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #fce7f3; }
+    ::-webkit-scrollbar-thumb { background: #ec4899; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #db2777; }
+    * { scrollbar-width: thin; scrollbar-color: #ec4899 #fce7f3; }
+  </style>
+</head>
+<body class="min-h-screen gradient-bg flex items-center justify-center p-4" style="background: linear-gradient(135deg, #fdf2f8 0%, #fce7f3 50%, #fbcfe8 100%);">
+  <div class="w-full max-w-md">
+    <div class="bg-white rounded-2xl shadow-xl p-8 text-center">
+      <!-- Animated Email Icon -->
+      <div class="mb-6">
+        <div class="w-20 h-20 rounded-full bg-pink-50 flex items-center justify-center mx-auto mb-4 animate-pulse">
+          <i class="ri-mail-send-line text-4xl text-pink-500"></i>
+        </div>
+        <h1 class="text-2xl font-bold text-gray-900">Sending OTP...</h1>
+        <p class="text-sm text-gray-500 mt-1">Secure login verification in progress</p>
+      </div>
+
+      <!-- Info Box -->
+      <div class="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-6">
+        <div class="flex items-start gap-3 text-left">
+          <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+            <i class="ri-mail-line text-blue-600"></i>
+          </div>
+          <div>
+            <p class="text-sm text-blue-700 font-medium">OTP will arrive shortly</p>
+            <p class="text-sm text-blue-600 mt-0.5">Please check your email inbox at <strong id="otpEmailDisplay"><%= email || 'your email' %></strong></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Loading Messages -->
+      <div class="space-y-3 mb-6">
+        <div id="msg1" class="flex items-center gap-3 text-sm text-gray-600 bg-gray-50 rounded-lg p-3">
+          <i class="ri-loader-4-line animate-spin text-pink-500"></i>
+          <span>Generating secure OTP...</span>
+        </div>
+        <div id="msg2" class="flex items-center gap-3 text-sm text-gray-600 bg-gray-50 rounded-lg p-3 opacity-50">
+          <i class="ri-time-line text-gray-400"></i>
+          <span>Sending to your email...</span>
+        </div>
+        <div id="msg3" class="flex items-center gap-3 text-sm text-gray-600 bg-gray-50 rounded-lg p-3 opacity-50">
+          <i class="ri-mail-check-line text-gray-400"></i>
+          <span>Please check your mail / spam folder</span>
+        </div>
+      </div>
+
+      <!-- Progress Bar -->
+      <div class="mb-4">
+        <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
+          <div id="sendProgress" class="h-full bg-gradient-to-r from-pink-400 to-pink-600 rounded-full transition-all duration-1000" style="width: 0%"></div>
+        </div>
+        <p id="sendStatus" class="text-xs text-gray-400 mt-2">Please wait...</p>
+      </div>
+
+      <!-- Tips -->
+      <div class="text-xs text-gray-400 space-y-1">
+        <p><i class="ri-information-line"></i> OTP expires in 10 minutes</p>
+        <p><i class="ri-spam-2-line"></i> Check spam/junk folder if not received</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      const messages = [
+        { id: 'msg1', text: 'Generating secure OTP...', delay: 0 },
+        { id: 'msg2', text: 'Sending to your email...', delay: 1500 },
+        { id: 'msg3', text: 'Please check your mail / spam folder', delay: 3000 },
+      ];
+
+      let progress = 0;
+      const progressBar = document.getElementById('sendProgress');
+      const statusText = document.getElementById('sendStatus');
+
+      // Animate messages
+      messages.forEach((m, i) => {
+        setTimeout(() => {
+          const el = document.getElementById(m.id);
+          if (el) {
+            el.classList.remove('opacity-50');
+            el.querySelector('i').className = 'ri-loader-4-line animate-spin text-pink-500';
+            // Dim previous
+            if (i > 0) {
+              const prev = document.getElementById(messages[i-1].id);
+              if (prev) {
+                prev.querySelector('i').className = 'ri-check-line text-green-500';
+                prev.classList.add('opacity-70');
+              }
+            }
+          }
+          progress = Math.min(90, (i + 1) * 30);
+          progressBar.style.width = progress + '%';
+        }, m.delay);
+      });
+
+      // Auto-redirect after 4 seconds
+      setTimeout(() => {
+        progressBar.style.width = '100%';
+        statusText.textContent = 'Redirecting to verification page...';
+        setTimeout(() => {
+          window.location.href = '/auth/verify-login-otp';
+        }, 800);
+      }, 4000);
+
+      // Fallback: try to get email from URL or session if template var is missing
+      if (!document.getElementById('otpEmailDisplay').textContent.trim() || document.getElementById('otpEmailDisplay').textContent === 'your email') {
+        // Try to read from a hidden meta or session - if not available, keep generic
+        console.log('[OTP] Email not available in template, showing generic message');
+      }
+    })();
+    </script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('/sw.js')
+          .then(function(reg) { console.log('[PWA] SW registered'); })
+          .catch(function(err) { console.log('[PWA] SW registration failed', err); });
+      });
+    }
+  </script>
+</body>
+</html>

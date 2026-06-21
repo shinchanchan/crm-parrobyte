@@ -1,0 +1,108 @@
+<div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+  <div>
+    <h2 class="text-xl font-bold text-gray-900">Poll Auto-Responses</h2>
+    <p class="text-sm text-gray-500">When someone votes on a poll option, automatically send a follow-up message</p>
+  </div>
+</div>
+
+<!-- Create Form -->
+<div class="bg-white rounded-2xl border border-pink-100 p-6 mb-6">
+  <h3 class="font-semibold text-gray-900 mb-4"><i class="ri-add-circle-line text-pink-500 mr-1"></i> New Auto-Response</h3>
+  <form action="/poll-auto-responses/create" method="POST" class="grid md:grid-cols-4 gap-4 items-end">
+    <div>
+      <label class="block text-xs font-medium text-gray-600 mb-1">Poll Question</label>
+      <input type="text" name="pollName" required placeholder="Which package do you prefer?"
+        class="w-full px-4 py-2.5 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm">
+    </div>
+    <div>
+      <label class="block text-xs font-medium text-gray-600 mb-1">Option</label>
+      <input type="text" name="optionName" required placeholder="Starter"
+        class="w-full px-4 py-2.5 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm">
+    </div>
+    <div>
+      <label class="block text-xs font-medium text-gray-600 mb-1">Response Template</label>
+      <select name="templateId" id="parTemplateSelect" onchange="fillParContent(this)"
+        class="w-full px-4 py-2.5 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm bg-white">
+        <option value="">Custom message...</option>
+        <% (typeof templates !== 'undefined' ? templates : []).forEach(t => { %>
+          <option value="<%= t.id %>" data-content="<%= (t.content || '').replace(/"/g, '&quot;') %>"><%= t.name %></option>
+        <% }); %>
+      </select>
+    </div>
+    <button type="submit" class="px-6 py-2.5 btn-pink text-white text-sm font-medium rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2">
+      <i class="ri-save-line"></i> Save
+    </button>
+    <div class="md:col-span-4">
+      <label class="block text-xs font-medium text-gray-600 mb-1">Response Message</label>
+      <textarea name="responseContent" id="parResponseContent" rows="2" required placeholder="Type the auto-response message..."
+        class="w-full px-4 py-2.5 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm resize-none"></textarea>
+    </div>
+  </form>
+</div>
+
+<!-- List -->
+<% if (responses && responses.length > 0) { %>
+<div class="bg-white rounded-2xl border border-pink-100 overflow-hidden">
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-gray-50 border-b border-pink-100">
+        <tr>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Poll</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Option</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Response</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Template</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Status</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Created</th>
+          <th class="text-left px-4 py-3 font-medium text-gray-700 w-10"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        <% responses.forEach(r => { %>
+          <tr class="hover:bg-pink-50/50 transition-colors">
+            <td class="px-6 py-3 text-gray-900 font-medium max-w-xs truncate"><%= r.pollName %></td>
+            <td class="px-6 py-3">
+              <span class="text-xs bg-green-50 text-green-600 px-2 py-1 rounded-full"><%= r.optionName %></span>
+            </td>
+            <td class="px-6 py-3 text-gray-600 max-w-xs truncate text-xs"><%= r.responseContent %></td>
+            <td class="px-6 py-3 text-xs text-gray-500">
+              <% const tmpl = templateMap.get(r.templateId); %>
+              <%= tmpl ? tmpl.name : '-' %>
+            </td>
+            <td class="px-6 py-3">
+              <form action="/poll-auto-responses/toggle/<%= r.id %>" method="POST" class="inline">
+                <button type="submit" class="text-xs px-2 py-1 rounded-full <%= r.isActive ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500' %>">
+                  <%= r.isActive ? 'Active' : 'Inactive' %>
+                </button>
+              </form>
+            </td>
+            <td class="px-6 py-3 text-xs text-gray-500"><%= new Date(r.createdAt).toLocaleDateString() %></td>
+            <td class="px-4 py-3">
+              <form action="/poll-auto-responses/delete/<%= r.id %>" method="POST" class="inline" onsubmit="return confirm('Delete this auto-response?');">
+                <button type="submit" class="text-gray-400 hover:text-red-500 transition-colors" title="Delete">
+                  <i class="ri-delete-bin-line"></i>
+                </button>
+              </form>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+</div>
+<% } else { %>
+<div class="bg-white rounded-2xl border border-pink-100 p-8 text-center text-gray-400">
+  <i class="ri-robot-2-line text-3xl text-gray-300 mb-2 block"></i>
+  <p>No poll auto-responses configured yet.</p>
+  <p class="text-xs mt-1">Create one above or set them up directly when sending a bulk poll.</p>
+</div>
+<% } %>
+
+<script>
+function fillParContent(select) {
+  const option = select.options[select.selectedIndex];
+  const content = option.dataset.content || '';
+  if (content) {
+    document.getElementById('parResponseContent').value = content;
+  }
+}
+</script>

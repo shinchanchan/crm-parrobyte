@@ -1,0 +1,207 @@
+<div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+  <div>
+    <h2 class="text-xl font-bold text-gray-900">Contacts</h2>
+    <p class="text-sm text-gray-500">Manage your contact list</p>
+  </div>
+  <div class="flex gap-2">
+    <button onclick="document.getElementById('uploadModal').showModal()" class="px-4 py-2.5 bg-white border border-pink-200 text-pink-600 text-sm font-medium rounded-xl hover:bg-pink-50 transition-colors flex items-center gap-2">
+      <i class="ri-upload-2-line"></i> Bulk Upload
+    </button>
+    <button onclick="document.getElementById('addModal').showModal()" class="px-5 py-2.5 btn-pink text-white text-sm font-medium rounded-xl hover:shadow-lg transition-all flex items-center gap-2">
+      <i class="ri-add-line"></i> Add Contact
+    </button>
+  </div>
+</div>
+
+<!-- Contacts Table -->
+<%
+const columns = [
+  {
+    key: 'name',
+    label: 'Name',
+    sortable: true,
+    searchable: true,
+    format: (row) => `
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-full bg-gradient-to-br from-pink-400 to-pink-600 flex items-center justify-center text-white font-bold text-sm">${row.name.charAt(0).toUpperCase()}</div>
+        <div>
+          <p class="font-medium text-gray-900">${row.name}</p>
+        </div>
+      </div>
+    `
+  },
+  { key: 'phone', label: 'Phone', sortable: true, searchable: true },
+  {
+    key: 'email',
+    label: 'Email',
+    sortable: true,
+    searchable: true,
+    format: (row) => row.email
+      ? `<a href="mailto:${row.email}" class="text-xs text-pink-600 hover:underline flex items-center gap-1" title="Send email to ${row.email}"><i class="ri-mail-line"></i> ${row.email}</a>`
+      : `<span class="text-xs text-gray-400">—</span>`
+  },
+  {
+    key: 'group',
+    label: 'Group',
+    sortable: true,
+    searchable: true,
+    format: (row) => `<span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">${row.group || 'default'}</span>`
+  },
+  { key: 'tags', label: 'Tags', sortable: false, searchable: true },
+  {
+    key: 'actions',
+    label: 'Actions',
+    sortable: false,
+    searchable: false,
+    format: (row) => `
+      <div class="flex items-center justify-end gap-2">
+        ${row.email ? `<a href="mailto:${row.email}" class="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors" title="Email ${row.email}"><i class="ri-mail-send-line"></i></a>` : ''}
+        <button onclick="editContact('${row.id}', '${row.name}', '${row.phone}', '${row.email || ''}', '${row.group || 'default'}', '${row.tags || ''}', '${row.notes || ''}', '${row.countryCode || '+91'}')" class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+          <i class="ri-edit-line"></i>
+        </button>
+        <form action="/contacts/delete/${row.id}" method="POST" class="inline" onsubmit="return confirm('Delete this contact?')">
+          <button type="submit" class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+            <i class="ri-delete-bin-line"></i>
+          </button>
+        </form>
+      </div>
+    `
+  },
+];
+%>
+<%- include('../../partials/paginated-table', {
+  data: contacts,
+  columns,
+  pagination,
+  columnFilters,
+  sortCol,
+  sortDir,
+  actionPath: '/contacts',
+}) %>
+
+<!-- Add Modal -->
+<dialog id="addModal" class="modal">
+  <div class="modal-box bg-white rounded-2xl max-w-lg">
+    <h3 class="font-bold text-lg text-gray-900 mb-4">Add Contact</h3>
+    <form action="/contacts/create" method="POST" data-loading-text="Creating contact...">
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+          <input type="text" name="name" required class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none text-sm">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Country Code *</label>
+          <div class="flex items-center gap-2 rounded-xl border border-pink-200 focus-within:border-pink-500 focus-within:ring-2 focus-within:ring-pink-200 px-3 py-2 bg-white">
+            <span class="text-sm text-gray-500 font-medium select-none">+</span>
+            <input type="text" name="countryCode" value="91" required pattern="[0-9]+" title="Country code digits only" class="w-full text-sm outline-none bg-transparent border-none focus:ring-0" placeholder="91">
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number *</label>
+          <input type="tel" name="phone" required pattern="[0-9]+" title="Enter phone number digits only" class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none text-sm" placeholder="9876543210">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+          <input type="email" name="email" class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none text-sm">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Group</label>
+          <input type="text" name="group" value="default" class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none text-sm">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Tags</label>
+          <input type="text" name="tags" placeholder="vip, lead, customer" class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none text-sm">
+        </div>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+        <textarea name="notes" rows="2" class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none text-sm"></textarea>
+      </div>
+      <div class="flex gap-3 justify-end">
+        <button type="button" onclick="document.getElementById('addModal').close()" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+        <button type="submit" class="px-6 py-2 btn-pink text-white text-sm font-medium rounded-lg"><i class="ri-save-line"></i> Save</button>
+      </div>
+    </form>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+<!-- Edit Modal -->
+<dialog id="editModal" class="modal">
+  <div class="modal-box bg-white rounded-2xl max-w-lg">
+    <h3 class="font-bold text-lg text-gray-900 mb-4">Edit Contact</h3>
+    <form id="editForm" action="" method="POST" data-loading-text="Updating contact...">
+      <div class="grid grid-cols-2 gap-4">
+        <div><label class="block text-sm font-medium text-gray-700 mb-1">Name</label><input type="text" name="name" id="editName" required class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm"></div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Country Code</label>
+          <div class="flex items-center gap-2 rounded-xl border border-pink-200 focus-within:border-pink-500 focus-within:ring-2 focus-within:ring-pink-200 px-3 py-2 bg-white">
+            <span class="text-sm text-gray-500 font-medium select-none">+</span>
+            <input type="text" name="countryCode" id="editCountryCode" value="91" required pattern="[0-9]+" title="Country code digits only" class="w-full text-sm outline-none bg-transparent border-none focus:ring-0" placeholder="91">
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+          <input type="tel" name="phone" id="editPhone" required pattern="[0-9]+" title="Enter phone number digits only" class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none text-sm" placeholder="9876543210">
+        </div>
+        <div><label class="block text-sm font-medium text-gray-700 mb-1">Email</label><input type="email" name="email" id="editEmail" class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm"></div>
+        <div><label class="block text-sm font-medium text-gray-700 mb-1">Group</label><input type="text" name="group" id="editGroup" class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm"></div>
+        <div><label class="block text-sm font-medium text-gray-700 mb-1">Tags</label><input type="text" name="tags" id="editTags" class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm"></div>
+      </div>
+      <div><label class="block text-sm font-medium text-gray-700 mb-1">Notes</label><textarea name="notes" id="editNotes" rows="2" class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm"></textarea></div>
+      <div class="flex gap-3 justify-end">
+        <button type="button" onclick="document.getElementById('editModal').close()" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+        <button type="submit" class="px-6 py-2 btn-pink text-white text-sm font-medium rounded-lg"><i class="ri-save-line"></i> Update</button>
+      </div>
+    </form>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+<!-- Upload Modal -->
+<dialog id="uploadModal" class="modal">
+  <div class="modal-box bg-white rounded-2xl max-w-lg">
+    <h3 class="font-bold text-lg text-gray-900 mb-4">Bulk Upload Contacts</h3>
+    <div class="bg-blue-50 rounded-xl p-4 mb-4">
+      <p class="text-sm text-blue-700 font-medium mb-2"><i class="ri-information-line"></i> CSV Format</p>
+      <p class="text-xs text-blue-600">Your CSV should have columns: name, phone, email, group, countryCode</p>
+      <div class="mt-2 bg-white rounded-lg p-2 text-xs font-mono text-gray-600">
+        name,phone,email,group,countryCode<br>
+        John Doe,9876543210,john@example.com,leads,+91
+      </div>
+    </div>
+    <form action="/contacts/bulk-upload" method="POST" enctype="multipart/form-data" data-loading-text="Uploading CSV file... Please wait">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">CSV File</label>
+        <input type="file" name="csvFile" accept=".csv" required class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-pink-100 file:text-pink-700">
+      </div>
+      <div class="flex gap-3 justify-end">
+        <button type="button" onclick="document.getElementById('uploadModal').close()" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+        <button type="submit" class="px-6 py-2 btn-pink text-white text-sm font-medium rounded-lg"><i class="ri-upload-2-line"></i> Upload</button>
+      </div>
+    </form>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+<script>
+function editContact(id, name, phone, email, group, tags, notes, countryCode) {
+  document.getElementById('editForm').action = '/contacts/update/' + id;
+  document.getElementById('editName').value = name;
+  document.getElementById('editEmail').value = email || '';
+  document.getElementById('editGroup').value = group || 'default';
+  document.getElementById('editTags').value = tags || '';
+  document.getElementById('editNotes').value = notes || '';
+  document.getElementById('editCountryCode').value = (countryCode || '+91').replace(/\D/g, '');
+  
+  // Parse local phone from stored full phone
+  const cc = (countryCode || '+91').replace(/\D/g, '');
+  let localPhone = phone || '';
+  if (localPhone.startsWith(cc)) {
+    localPhone = localPhone.substring(cc.length);
+  }
+  document.getElementById('editPhone').value = localPhone;
+  
+  document.getElementById('editModal').showModal();
+}
+</script>

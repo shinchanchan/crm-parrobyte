@@ -1,0 +1,355 @@
+<!-- Instagram DM Auto-Reply Animated Demo -->
+<style>
+@keyframes demo-slide-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes demo-ping {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+@keyframes demo-typing {
+  0% { width: 0; }
+  30% { width: 100%; }
+  100% { width: 100%; }
+}
+@keyframes demo-pulse-ring {
+  0% { transform: scale(0.8); opacity: 0.8; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+@keyframes demo-arrow-bounce {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(4px); }
+}
+
+.demo-phone {
+  background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+  border-radius: 32px;
+  padding: 16px 12px 12px;
+  box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.1);
+  border: 4px solid #2d2d44;
+  position: relative;
+  overflow: hidden;
+}
+.demo-phone::before {
+  content: '';
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 4px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 2px;
+}
+.demo-screen {
+  background: #0f0f23;
+  border-radius: 20px;
+  overflow: hidden;
+  height: 320px;
+  display: flex;
+  flex-direction: column;
+}
+.demo-header {
+  background: linear-gradient(135deg, #833ab4 0%, #fd1d1d 50%, #f77737 100%);
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.demo-header-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+.demo-header-name {
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+}
+.demo-header-status {
+  color: rgba(255,255,255,0.7);
+  font-size: 9px;
+}
+.demo-chat {
+  flex: 1;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+}
+.demo-msg-in {
+  align-self: flex-start;
+  background: #2d2d3a;
+  color: #e0e0e0;
+  padding: 8px 12px;
+  border-radius: 16px 16px 16px 4px;
+  font-size: 11px;
+  max-width: 75%;
+  opacity: 0;
+  animation: demo-slide-in 0.4s ease forwards;
+}
+.demo-msg-out {
+  align-self: flex-end;
+  background: linear-gradient(135deg, #833ab4, #fd1d1d);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 16px 16px 4px 16px;
+  font-size: 11px;
+  max-width: 75%;
+  opacity: 0;
+}
+.demo-typing {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 12px;
+  background: #2d2d3a;
+  border-radius: 16px;
+  width: fit-content;
+  align-self: flex-start;
+}
+.demo-typing-dot {
+  width: 5px;
+  height: 5px;
+  background: #888;
+  border-radius: 50%;
+  animation: demo-ping 1s ease-in-out infinite;
+}
+.demo-typing-dot:nth-child(2) { animation-delay: 0.15s; }
+.demo-typing-dot:nth-child(3) { animation-delay: 0.3s; }
+
+.demo-flow-step {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  opacity: 0;
+  transform: translateX(-10px);
+}
+.demo-flow-step.active {
+  opacity: 1;
+  transform: translateX(0);
+  transition: all 0.4s ease;
+}
+.demo-flow-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.demo-flow-arrow {
+  color: #9ca3af;
+  font-size: 14px;
+  animation: demo-arrow-bounce 1.5s ease-in-out infinite;
+}
+
+.demo-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+/* Animation delays for the full demo cycle */
+.demo-cycle .msg-1 { animation-delay: 1s; }
+.demo-cycle .msg-2 { animation-delay: 3.5s; }
+.demo-cycle .msg-3 { animation-delay: 5s; }
+.demo-cycle .msg-4 { animation-delay: 7s; }
+.demo-cycle .typing-1 { animation: demo-slide-in 0.3s ease forwards, demo-fade-out 0.3s ease forwards 2.5s; animation-delay: 2.5s; }
+.demo-cycle .typing-2 { animation: demo-slide-in 0.3s ease forwards, demo-fade-out 0.3s ease forwards 2.5s; animation-delay: 6s; }
+
+@keyframes demo-fade-out {
+  to { opacity: 0; }
+}
+</style>
+
+<div class="mb-6">
+  <div class="bg-gradient-to-r from-purple-50 via-pink-50 to-orange-50 rounded-2xl border border-pink-100 p-6 overflow-hidden">
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <h3 class="font-bold text-gray-900 text-lg flex items-center gap-2">
+          <i class="ri-movie-line text-pink-600"></i> See How It Works
+        </h3>
+        <p class="text-sm text-gray-500 mt-1">Watch Instagram DM auto-reply in action</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="demo-badge bg-green-100 text-green-600">
+          <i class="ri-checkbox-circle-line"></i> Auto-Reply Active
+        </span>
+      </div>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-6 items-start">
+      <!-- Left: Animated Phone Demo -->
+      <div class="flex justify-center">
+        <div class="demo-phone w-64">
+          <div class="demo-screen">
+            <div class="demo-header">
+              <div class="demo-header-avatar">🤖</div>
+              <div>
+                <div class="demo-header-name">ParroByte Bot</div>
+                <div class="demo-header-status">Auto-reply active</div>
+              </div>
+            </div>
+            <div class="demo-chat demo-cycle" id="demoChat">
+              <!-- Messages will be animated via JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Flow Steps -->
+      <div class="space-y-3" id="demoFlow">
+        <div class="demo-flow-step" data-step="1">
+          <div class="demo-flow-icon bg-blue-100 text-blue-600">
+            <i class="ri-user-received-line"></i>
+          </div>
+          <div class="flex-1">
+            <p class="text-sm font-medium text-gray-900">Customer sends DM</p>
+            <p class="text-xs text-gray-500">"Hi, what's your pricing?"</p>
+          </div>
+        </div>
+        <div class="text-center demo-flow-arrow"><i class="ri-arrow-down-line"></i></div>
+
+        <div class="demo-flow-step" data-step="2">
+          <div class="demo-flow-icon bg-purple-100 text-purple-600">
+            <i class="ri-brain-line"></i>
+          </div>
+          <div class="flex-1">
+            <p class="text-sm font-medium text-gray-900">Rule engine matches keyword</p>
+            <p class="text-xs text-gray-500">Trigger: "contains pricing"</p>
+          </div>
+        </div>
+        <div class="text-center demo-flow-arrow"><i class="ri-arrow-down-line"></i></div>
+
+        <div class="demo-flow-step" data-step="3">
+          <div class="demo-flow-icon bg-pink-100 text-pink-600">
+            <i class="ri-send-plane-line"></i>
+          </div>
+          <div class="flex-1">
+            <p class="text-sm font-medium text-gray-900">Auto-reply sent instantly</p>
+            <p class="text-xs text-gray-500">"Our plans start at ₹999/mo 💰"</p>
+          </div>
+        </div>
+        <div class="text-center demo-flow-arrow"><i class="ri-arrow-down-line"></i></div>
+
+        <div class="demo-flow-step" data-step="4">
+          <div class="demo-flow-icon bg-green-100 text-green-600">
+            <i class="ri-chat-check-line"></i>
+          </div>
+          <div class="flex-1">
+            <p class="text-sm font-medium text-gray-900">Conversation saved to CRM</p>
+            <p class="text-xs text-gray-500">View all chats in your dashboard</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats Bar -->
+    <div class="mt-6 grid grid-cols-3 gap-3">
+      <div class="bg-white/60 rounded-xl p-3 text-center border border-white/50">
+        <p class="text-xl font-bold text-pink-600" id="demoStatReplies">0</p>
+        <p class="text-xs text-gray-500">Auto-Replies Sent</p>
+      </div>
+      <div class="bg-white/60 rounded-xl p-3 text-center border border-white/50">
+        <p class="text-xl font-bold text-purple-600" id="demoStatRules">0</p>
+        <p class="text-xs text-gray-500">Active Rules</p>
+      </div>
+      <div class="bg-white/60 rounded-xl p-3 text-center border border-white/50">
+        <p class="text-xl font-bold text-blue-600" id="demoStatTime">&lt;2s</p>
+        <p class="text-xs text-gray-500">Avg Response Time</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const chat = document.getElementById('demoChat');
+  const steps = document.querySelectorAll('.demo-flow-step');
+  const statReplies = document.getElementById('demoStatReplies');
+
+  const messages = [
+    { type: 'in', text: 'Hi there! 👋', delay: 0 },
+    { type: 'typing', delay: 1200 },
+    { type: 'out', text: 'Hey! Welcome to our page! How can we help you today? 🚀', delay: 1800 },
+    { type: 'in', text: 'What are your prices?', delay: 3500 },
+    { type: 'typing', delay: 4700 },
+    { type: 'out', text: 'Our plans start at ₹999/month! Check the link in bio for details 💰', delay: 5300 },
+  ];
+
+  function animateChat() {
+    chat.innerHTML = '';
+    steps.forEach(s => s.classList.remove('active'));
+
+    messages.forEach((msg, i) => {
+      setTimeout(() => {
+        if (msg.type === 'typing') {
+          const el = document.createElement('div');
+          el.className = 'demo-typing';
+          el.innerHTML = '<span class="demo-typing-dot"></span><span class="demo-typing-dot"></span><span class="demo-typing-dot"></span>';
+          chat.appendChild(el);
+          chat.scrollTop = chat.scrollHeight;
+          setTimeout(() => el.remove(), 800);
+        } else {
+          const el = document.createElement('div');
+          el.className = msg.type === 'in' ? 'demo-msg-in' : 'demo-msg-out';
+          el.style.animation = 'demo-slide-in 0.4s ease forwards';
+          el.textContent = msg.text;
+          chat.appendChild(el);
+          chat.scrollTop = chat.scrollHeight;
+
+          // Highlight flow step
+          const stepIdx = msg.type === 'in' ? 0 : (msg.text.includes('₹') ? 2 : 1);
+          if (steps[stepIdx]) steps[stepIdx].classList.add('active');
+
+          // Update stat
+          if (msg.type === 'out') {
+            const current = parseInt(statReplies.textContent) || 0;
+            statReplies.textContent = current + 1;
+          }
+        }
+      }, msg.delay);
+    });
+
+    // Reset and loop
+    setTimeout(() => {
+      statReplies.textContent = '0';
+      animateChat();
+    }, 8000);
+  }
+
+  // Start animation
+  animateChat();
+
+  // Animate rules count
+  const statRules = document.getElementById('demoStatRules');
+  let targetRules = 3;
+  let currentRules = 0;
+  const rulesInterval = setInterval(() => {
+    if (currentRules < targetRules) {
+      currentRules++;
+      statRules.textContent = currentRules;
+    } else {
+      clearInterval(rulesInterval);
+    }
+  }, 300);
+})();
+</script>

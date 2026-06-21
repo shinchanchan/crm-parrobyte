@@ -1,0 +1,678 @@
+<style>
+  .step-card {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    border-radius: 16px;
+    padding: 20px;
+    transition: all 0.25s ease;
+    position: relative;
+  }
+  .step-card:hover {
+    background: rgba(255, 255, 255, 0.9);
+    border-color: rgba(var(--fp-rgb, 236,72,153), 0.2);
+    transform: translateY(-2px);
+  }
+  .step-number {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .step-arrow {
+    position: absolute;
+    right: -24px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+    display: none;
+  }
+  @media (min-width: 1024px) {
+    .step-arrow { display: block; }
+  }
+  .copy-field {
+    background: rgba(0, 0, 0, 0.04);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-family: 'SF Mono', monospace;
+    font-size: 12px;
+    word-break: break-all;
+  }
+  .guide-tab {
+    padding: 8px 20px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid transparent;
+  }
+  .guide-tab.active {
+    background: linear-gradient(135deg, #1877f2 0%, #42b72a 100%);
+    color: white;
+  }
+  .guide-tab.inactive {
+    background: rgba(0, 0, 0, 0.04);
+    color: #6b7280;
+  }
+  .guide-tab.inactive:hover {
+    background: rgba(0, 0, 0, 0.08);
+  }
+  .guide-tab-ig.active {
+    background: linear-gradient(135deg, #833ab4 0%, #fd1d1d 50%, #f77737 100%);
+    color: white;
+  }
+  .collapsible-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s ease;
+  }
+  .collapsible-content.open {
+    max-height: 4000px;
+  }
+</style>
+
+<div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+  <div>
+    <h2 class="text-xl font-bold text-gray-900">Social Media Automation</h2>
+    <p class="text-sm text-gray-500">Automate Facebook & Instagram DM responses</p>
+  </div>
+  <button onclick="document.getElementById('automationModal').showModal()" class="px-5 py-2.5 btn-pink text-white text-sm font-medium rounded-xl hover:shadow-lg transition-all flex items-center gap-2 w-fit">
+    <i class="ri-add-line"></i> New Automation Rule
+  </button>
+</div>
+
+<!-- Connection Status Cards -->
+<div class="grid md:grid-cols-2 gap-6 mb-8">
+  <!-- Facebook -->
+  <div class="glass-builder rounded-2xl p-6 card-hover relative overflow-hidden">
+    <div class="absolute top-0 right-0 w-32 h-32 rounded-full -mr-10 -mt-10 opacity-20" style="background:linear-gradient(135deg, #1877f2, #42b72a)"></div>
+    <div class="flex items-center gap-3 mb-4 relative z-10">
+      <div class="w-12 h-12 rounded-xl flex items-center justify-center text-white text-xl" style="background:linear-gradient(135deg, #1877f2, #42b72a)">
+        <i class="ri-messenger-fill"></i>
+      </div>
+      <div>
+        <h3 class="font-bold text-gray-900">Facebook Messenger</h3>
+        <p class="text-xs text-gray-500">Auto-reply to page messages</p>
+      </div>
+    </div>
+
+    <% if (fbAccounts.length && fbAccounts[0].isActive) { %>
+      <div class="bg-green-50 rounded-xl p-3 mb-4 flex items-center gap-2">
+        <span class="w-2.5 h-2.5 rounded-full bg-green-500 status-connected"></span>
+        <span class="text-sm text-green-700 font-medium flex-1"><%= fbAccounts[0].accountName %></span>
+        <form action="/social-automation/facebook/disconnect" method="POST" class="ml-auto">
+          <button type="submit" class="text-xs text-red-500 hover:text-red-700 font-medium px-2 py-1 rounded-lg hover:bg-red-50 transition-colors">Disconnect</button>
+        </form>
+      </div>
+      <div class="flex gap-2">
+        <span class="text-xs px-2 py-1 rounded-full bg-blue-50 text-blue-600"><i class="ri-check-line"></i> Connected</span>
+        <span class="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-500"><%= fbAccounts[0].pageId %></span>
+      </div>
+    <% } else { %>
+      <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
+        <div class="flex items-start gap-3">
+          <i class="ri-alert-line text-amber-600 mt-0.5"></i>
+          <div>
+            <p class="text-sm font-medium text-amber-800">Not Connected</p>
+            <p class="text-xs text-amber-600">Connect your Facebook Page to auto-reply to messages</p>
+          </div>
+        </div>
+      </div>
+      <!-- Quick OAuth Connect -->
+      <a href="/social-automation/facebook/auth" class="w-full py-2.5 text-sm font-medium rounded-xl flex items-center justify-center gap-2 text-white mb-2" style="background:linear-gradient(135deg, #1877f2, #42b72a)">
+        <i class="ri-facebook-circle-fill"></i> Connect with Facebook
+      </a>
+      <button onclick="toggleGuide('fbGuide')" class="w-full py-2 text-xs text-blue-600 hover:bg-blue-50 rounded-xl transition-colors flex items-center justify-center gap-1">
+        <i class="ri-book-open-line"></i> Manual Setup Guide
+      </button>
+    <% } %>
+  </div>
+
+  <!-- Instagram -->
+  <div class="glass-builder rounded-2xl p-6 card-hover relative overflow-hidden">
+    <div class="absolute top-0 right-0 w-32 h-32 rounded-full -mr-10 -mt-10 opacity-20" style="background:linear-gradient(135deg, #833ab4, #fd1d1d)"></div>
+    <div class="flex items-center gap-3 mb-4 relative z-10">
+      <div class="w-12 h-12 rounded-xl flex items-center justify-center text-white text-xl" style="background:linear-gradient(135deg, #833ab4, #fd1d1d, #f77737)">
+        <i class="ri-instagram-line"></i>
+      </div>
+      <div>
+        <h3 class="font-bold text-gray-900">Instagram DM</h3>
+        <p class="text-xs text-gray-500">Auto-reply to direct messages</p>
+      </div>
+    </div>
+
+    <% if (igAccounts.length && igAccounts[0].isActive) { %>
+      <div class="bg-green-50 rounded-xl p-3 mb-4 flex items-center gap-2">
+        <span class="w-2.5 h-2.5 rounded-full bg-green-500 status-connected"></span>
+        <span class="text-sm text-green-700 font-medium flex-1"><%= igAccounts[0].accountName %></span>
+        <form action="/social-automation/disconnect/<%= igAccounts[0].id %>" method="POST" class="ml-auto">
+          <button type="submit" class="text-xs text-red-500 hover:text-red-700 font-medium px-2 py-1 rounded-lg hover:bg-red-50 transition-colors">Disconnect</button>
+        </form>
+      </div>
+      <div class="flex gap-2">
+        <span class="text-xs px-2 py-1 rounded-full bg-pink-50 text-pink-600"><i class="ri-check-line"></i> Connected</span>
+        <span class="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-500"><%= igAccounts[0].pageId %></span>
+      </div>
+    <% } else { %>
+      <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
+        <div class="flex items-start gap-3">
+          <i class="ri-alert-line text-amber-600 mt-0.5"></i>
+          <div>
+            <p class="text-sm font-medium text-amber-800">Not Connected</p>
+            <p class="text-xs text-amber-600">Follow the step-by-step guide below to connect your Instagram account</p>
+          </div>
+        </div>
+      </div>
+      <button onclick="toggleGuide('igGuide')" class="w-full py-2.5 text-sm font-medium rounded-xl flex items-center justify-center gap-2 text-white" style="background:linear-gradient(135deg, #833ab4, #fd1d1d, #f77737)">
+        <i class="ri-book-open-line"></i> View Connection Guide
+      </button>
+    <% } %>
+  </div>
+</div>
+
+<!-- ===== FACEBOOK CONNECTION GUIDE ===== -->
+<div id="fbGuide" class="collapsible-content mb-6">
+  <div class="glass-builder rounded-2xl p-6">
+    <div class="flex items-center gap-3 mb-6">
+      <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white" style="background:linear-gradient(135deg, #1877f2, #42b72a)">
+        <i class="ri-messenger-fill"></i>
+      </div>
+      <div>
+        <h3 class="font-bold text-lg text-gray-900">Facebook Messenger Setup Guide</h3>
+        <p class="text-xs text-gray-500">Follow these 6 simple steps to connect your Facebook Page</p>
+      </div>
+      <button onclick="toggleGuide('fbGuide')" class="ml-auto text-gray-400 hover:text-gray-600"><i class="ri-close-line text-xl"></i></button>
+    </div>
+
+    <div class="grid lg:grid-cols-3 gap-4">
+      <!-- Step 1 -->
+      <div class="step-card">
+        <div class="step-arrow"><i class="ri-arrow-right-s-line text-gray-300 text-2xl"></i></div>
+        <div class="flex items-start gap-3">
+          <div class="step-number text-white" style="background:linear-gradient(135deg, #1877f2, #42b72a)">1</div>
+          <div class="flex-1">
+            <h4 class="font-semibold text-sm text-gray-900 mb-1">Go to Facebook Developers</h4>
+            <p class="text-xs text-gray-500 mb-2">Open Facebook Developers portal to access your apps</p>
+            <a href="https://developers.facebook.com/tools/explorer/" target="_blank" rel="noopener" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 text-xs font-medium hover:bg-blue-100 transition-colors">
+              <i class="ri-external-link-line"></i> Open Graph API Explorer
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="step-card">
+        <div class="step-arrow"><i class="ri-arrow-right-s-line text-gray-300 text-2xl"></i></div>
+        <div class="flex items-start gap-3">
+          <div class="step-number text-white" style="background:linear-gradient(135deg, #1877f2, #42b72a)">2</div>
+          <div class="flex-1">
+            <h4 class="font-semibold text-sm text-gray-900 mb-1">Select Your Facebook App</h4>
+            <p class="text-xs text-gray-500 mb-2">In the top-right "Meta App" dropdown, select your app (or create one if you don't have it)</p>
+            <div class="flex items-center gap-2 text-xs text-gray-400">
+              <i class="ri-information-line"></i> Need an app? <a href="https://developers.facebook.com/apps/" target="_blank" class="text-blue-500 underline">Create one here</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3 -->
+      <div class="step-card">
+        <div class="flex items-start gap-3">
+          <div class="step-number text-white" style="background:linear-gradient(135deg, #1877f2, #42b72a)">3</div>
+          <div class="flex-1">
+            <h4 class="font-semibold text-sm text-gray-900 mb-1">Add Required Permissions</h4>
+            <p class="text-xs text-gray-500 mb-2">Click "Add Permission" and add these two:</p>
+            <div class="space-y-1.5">
+              <div class="copy-field flex items-center justify-between gap-2">
+                <span>pages_messaging</span>
+                <button onclick="copyText('pages_messaging')" class="text-gray-400 hover:text-blue-500 transition-colors"><i class="ri-file-copy-line"></i></button>
+              </div>
+              <div class="copy-field flex items-center justify-between gap-2">
+                <span>pages_read_engagement</span>
+                <button onclick="copyText('pages_read_engagement')" class="text-gray-400 hover:text-blue-500 transition-colors"><i class="ri-file-copy-line"></i></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 4 -->
+      <div class="step-card">
+        <div class="step-arrow"><i class="ri-arrow-right-s-line text-gray-300 text-2xl"></i></div>
+        <div class="flex items-start gap-3">
+          <div class="step-number text-white" style="background:linear-gradient(135deg, #1877f2, #42b72a)">4</div>
+          <div class="flex-1">
+            <h4 class="font-semibold text-sm text-gray-900 mb-1">Generate Access Token</h4>
+            <p class="text-xs text-gray-500 mb-2">Click the blue <strong>"Generate Access Token"</strong> button. A popup will ask you to select your Facebook Page - choose the page you want to connect.</p>
+            <div class="bg-blue-50 rounded-lg p-2.5 text-xs text-blue-700">
+              <i class="ri-lightbulb-line mr-1"></i> Make sure you're an Admin of the Facebook Page
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 5 -->
+      <div class="step-card">
+        <div class="step-arrow"><i class="ri-arrow-right-s-line text-gray-300 text-2xl"></i></div>
+        <div class="flex items-start gap-3">
+          <div class="step-number text-white" style="background:linear-gradient(135deg, #1877f2, #42b72a)">5</div>
+          <div class="flex-1">
+            <h4 class="font-semibold text-sm text-gray-900 mb-1">Get Your Page ID</h4>
+            <p class="text-xs text-gray-500 mb-2">Go to your Facebook Page. The Page ID is in the URL:</p>
+            <div class="copy-field text-gray-500">facebook.com/<span class="text-blue-600 font-semibold">123456789</span></div>
+            <p class="text-[10px] text-gray-400 mt-1">The number after facebook.com/ is your Page ID</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 6 -->
+      <div class="step-card" style="border-color:rgba(24,119,242,0.2)">
+        <div class="flex items-start gap-3">
+          <div class="step-number text-white" style="background:linear-gradient(135deg, #1877f2, #42b72a)">6</div>
+          <div class="flex-1">
+            <h4 class="font-semibold text-sm text-gray-900 mb-1">Paste Details Below</h4>
+            <p class="text-xs text-gray-500 mb-2">Copy the Access Token from Step 4 and Page ID from Step 5, then paste them in the connect form.</p>
+            <button onclick="document.getElementById('fbConnectModal').showModal()" class="w-full py-2 text-sm font-medium text-white rounded-lg flex items-center justify-center gap-1" style="background:linear-gradient(135deg, #1877f2, #42b72a)">
+              <i class="ri-link"></i> Open Connect Form
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== INSTAGRAM CONNECTION GUIDE ===== -->
+<div id="igGuide" class="collapsible-content mb-6">
+  <div class="glass-builder rounded-2xl p-6">
+    <div class="flex items-center gap-3 mb-6">
+      <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white" style="background:linear-gradient(135deg, #833ab4, #fd1d1d, #f77737)">
+        <i class="ri-instagram-line"></i>
+      </div>
+      <div>
+        <h3 class="font-bold text-lg text-gray-900">Instagram DM Setup Guide</h3>
+        <p class="text-xs text-gray-500">Follow these 6 steps to connect your Instagram Business account</p>
+      </div>
+      <button onclick="toggleGuide('igGuide')" class="ml-auto text-gray-400 hover:text-gray-600"><i class="ri-close-line text-xl"></i></button>
+    </div>
+
+    <div class="grid lg:grid-cols-3 gap-4">
+      <!-- Step 1 -->
+      <div class="step-card">
+        <div class="step-arrow"><i class="ri-arrow-right-s-line text-gray-300 text-2xl"></i></div>
+        <div class="flex items-start gap-3">
+          <div class="step-number text-white" style="background:linear-gradient(135deg, #833ab4, #fd1d1d, #f77737)">1</div>
+          <div class="flex-1">
+            <h4 class="font-semibold text-sm text-gray-900 mb-1">Convert to Business Account</h4>
+            <p class="text-xs text-gray-500 mb-2">Your Instagram must be a <strong>Business or Creator</strong> account. To check:</p>
+            <div class="bg-pink-50 rounded-lg p-2.5 text-xs text-pink-700 space-y-1">
+              <p><i class="ri-settings-3-line mr-1"></i> Go to Instagram Profile → Settings</p>
+              <p><i class="ri-arrow-right-line mr-1"></i> Account → Switch to Professional Account</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="step-card">
+        <div class="step-arrow"><i class="ri-arrow-right-s-line text-gray-300 text-2xl"></i></div>
+        <div class="flex items-start gap-3">
+          <div class="step-number text-white" style="background:linear-gradient(135deg, #833ab4, #fd1d1d, #f77737)">2</div>
+          <div class="flex-1">
+            <h4 class="font-semibold text-sm text-gray-900 mb-1">Link to Facebook Page</h4>
+            <p class="text-xs text-gray-500 mb-2">Your Instagram must be connected to a Facebook Page:</p>
+            <div class="bg-pink-50 rounded-lg p-2.5 text-xs text-pink-700 space-y-1">
+              <p><i class="ri-settings-3-line mr-1"></i> Instagram → Settings → Accounts Center</p>
+              <p><i class="ri-facebook-circle-line mr-1"></i> Add your Facebook Page</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3 -->
+      <div class="step-card">
+        <div class="flex items-start gap-3">
+          <div class="step-number text-white" style="background:linear-gradient(135deg, #833ab4, #fd1d1d, #f77737)">3</div>
+          <div class="flex-1">
+            <h4 class="font-semibold text-sm text-gray-900 mb-1">Go to Graph API Explorer</h4>
+            <p class="text-xs text-gray-500 mb-2">Open the same tool as Facebook - Instagram uses the same system</p>
+            <a href="https://developers.facebook.com/tools/explorer/" target="_blank" rel="noopener" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-pink-50 text-pink-600 text-xs font-medium hover:bg-pink-100 transition-colors">
+              <i class="ri-external-link-line"></i> Open Graph API Explorer
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 4 -->
+      <div class="step-card">
+        <div class="step-arrow"><i class="ri-arrow-right-s-line text-gray-300 text-2xl"></i></div>
+        <div class="flex items-start gap-3">
+          <div class="step-number text-white" style="background:linear-gradient(135deg, #833ab4, #fd1d1d, #f77737)">4</div>
+          <div class="flex-1">
+            <h4 class="font-semibold text-sm text-gray-900 mb-1">Add Instagram Permissions</h4>
+            <p class="text-xs text-gray-500 mb-2">Click "Add Permission" and add these:</p>
+            <div class="space-y-1.5">
+              <div class="copy-field flex items-center justify-between gap-2">
+                <span>instagram_basic</span>
+                <button onclick="copyText('instagram_basic')" class="text-gray-400 hover:text-pink-500 transition-colors"><i class="ri-file-copy-line"></i></button>
+              </div>
+              <div class="copy-field flex items-center justify-between gap-2">
+                <span>instagram_manage_messages</span>
+                <button onclick="copyText('instagram_manage_messages')" class="text-gray-400 hover:text-pink-500 transition-colors"><i class="ri-file-copy-line"></i></button>
+              </div>
+              <div class="copy-field flex items-center justify-between gap-2">
+                <span>pages_messaging</span>
+                <button onclick="copyText('pages_messaging')" class="text-gray-400 hover:text-pink-500 transition-colors"><i class="ri-file-copy-line"></i></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 5 -->
+      <div class="step-card">
+        <div class="step-arrow"><i class="ri-arrow-right-s-line text-gray-300 text-2xl"></i></div>
+        <div class="flex items-start gap-3">
+          <div class="step-number text-white" style="background:linear-gradient(135deg, #833ab4, #fd1d1d, #f77737)">5</div>
+          <div class="flex-1">
+            <h4 class="font-semibold text-sm text-gray-900 mb-1">Generate Token & Get ID</h4>
+            <p class="text-xs text-gray-500 mb-2">Click <strong>"Generate Access Token"</strong> and select your linked Facebook Page. Then get your Instagram Business ID:</p>
+            <div class="bg-pink-50 rounded-lg p-2.5 text-xs text-pink-700">
+              <p><i class="ri-lightbulb-line mr-1"></i> Instagram Business ID = your Instagram username or numeric ID</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 6 -->
+      <div class="step-card" style="border-color:rgba(131,58,180,0.2)">
+        <div class="flex items-start gap-3">
+          <div class="step-number text-white" style="background:linear-gradient(135deg, #833ab4, #fd1d1d, #f77737)">6</div>
+          <div class="flex-1">
+            <h4 class="font-semibold text-sm text-gray-900 mb-1">Paste & Connect</h4>
+            <p class="text-xs text-gray-500 mb-2">Copy the Access Token and Instagram Business ID into the connect form below.</p>
+            <button onclick="document.getElementById('igConnectModal').showModal()" class="w-full py-2 text-sm font-medium text-white rounded-lg flex items-center justify-center gap-1" style="background:linear-gradient(135deg, #833ab4, #fd1d1d, #f77737)">
+              <i class="ri-link"></i> Open Connect Form
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Automation Rules -->
+<div class="glass-builder rounded-2xl p-6 mb-6">
+  <div class="flex items-center justify-between mb-4">
+    <h3 class="font-semibold text-gray-900 flex items-center gap-2">
+      <i class="ri-robot-line text-purple-500"></i> Automation Rules
+    </h3>
+    <span class="text-xs text-gray-400"><%= automations.length %> rules</span>
+  </div>
+
+  <% if (automations.length) { %>
+    <div class="space-y-2">
+      <% automations.forEach(function(rule) { %>
+        <div class="flex items-center justify-between p-4 rounded-xl bg-white/60 border border-gray-100">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center text-lg <%= rule.platform === 'facebook' ? 'bg-blue-100 text-blue-600' : 'bg-pink-100 text-pink-600' %>">
+              <i class="ri-<%= rule.platform === 'facebook' ? 'messenger' : 'instagram' %>-line"></i>
+            </div>
+            <div>
+              <p class="text-sm font-semibold text-gray-900"><%= rule.name %></p>
+              <div class="flex items-center gap-2 mt-0.5">
+                <span class="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600"><%= rule.triggerType %>: "<%= rule.triggerValue %>"</span>
+                <span class="text-[10px] px-2 py-0.5 rounded-full <%= rule.responseType === 'ai' ? 'bg-purple-100 text-purple-600' : 'bg-green-100 text-green-600' %>"><%= rule.responseType === 'ai' ? 'AI' : 'Static' %></span>
+                <span class="text-[10px] text-gray-400"><%= rule.usageCount || 0 %> uses</span>
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center gap-1">
+            <button onclick="toggleRule('<%= rule.id %>', this)" class="p-2 rounded-lg hover:bg-gray-100 transition-colors" title="Toggle">
+              <i class="ri-toggle-<%= rule.isActive ? 'fill text-green-500' : 'line text-gray-400' %> text-xl"></i>
+            </button>
+            <form action="/social-automation/delete/<%= rule.id %>" method="POST" class="inline" onsubmit="return confirm('Delete this rule?')" data-no-loading>
+              <button type="submit" class="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete"><i class="ri-delete-bin-line"></i></button>
+            </form>
+          </div>
+        </div>
+      <% }); %>
+    </div>
+  <% } else { %>
+    <div class="text-center py-8">
+      <div class="w-16 h-16 rounded-full bg-purple-50 flex items-center justify-center mx-auto mb-3">
+        <i class="ri-robot-line text-2xl text-purple-300"></i>
+      </div>
+      <p class="text-sm text-gray-500">No automation rules yet</p>
+      <p class="text-xs text-gray-400 mt-1">Connect your account and create your first rule</p>
+    </div>
+  <% } %>
+</div>
+
+<!-- How It Works -->
+<div class="glass-builder rounded-2xl p-6">
+  <h3 class="font-semibold text-gray-900 mb-4"><i class="ri-information-line text-blue-500 mr-1"></i> How It Works</h3>
+  <div class="grid md:grid-cols-4 gap-4">
+    <div class="text-center">
+      <div class="w-12 h-12 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center mx-auto mb-3"><i class="ri-link text-xl"></i></div>
+      <p class="text-sm font-semibold text-gray-800">1. Connect</p>
+      <p class="text-xs text-gray-500">Link FB/IG using the guide above</p>
+    </div>
+    <div class="text-center">
+      <div class="w-12 h-12 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center mx-auto mb-3"><i class="ri-keyboard-line text-xl"></i></div>
+      <p class="text-sm font-semibold text-gray-800">2. Set Keywords</p>
+      <p class="text-xs text-gray-500">Define trigger words or phrases</p>
+    </div>
+    <div class="text-center">
+      <div class="w-12 h-12 rounded-xl bg-green-100 text-green-600 flex items-center justify-center mx-auto mb-3"><i class="ri-message-3-line text-xl"></i></div>
+      <p class="text-sm font-semibold text-gray-800">3. Set Response</p>
+      <p class="text-xs text-gray-500">Static text or AI-generated reply</p>
+    </div>
+    <div class="text-center">
+      <div class="w-12 h-12 rounded-xl bg-pink-100 text-pink-600 flex items-center justify-center mx-auto mb-3"><i class="ri-send-plane-line text-xl"></i></div>
+      <p class="text-sm font-semibold text-gray-800">4. Auto Reply</p>
+      <p class="text-xs text-gray-500">Replies sent automatically 24/7</p>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Connect Facebook Modal ===== -->
+<dialog id="fbConnectModal" class="modal">
+  <div class="modal-box glass-builder rounded-2xl max-w-md">
+    <h3 class="font-bold text-lg text-gray-900 mb-1">Connect Facebook Page</h3>
+    <p class="text-xs text-gray-500 mb-4">Paste the details you copied from the guide above</p>
+    <form action="/social-automation/connect/facebook" method="POST" data-loading-text="Connecting Facebook...">
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Page Name</label>
+          <input type="text" name="accountName" required class="w-full px-4 py-2.5 rounded-xl glass-input text-sm outline-none" placeholder="My Business Page">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Page ID</label>
+          <input type="text" name="pageId" required class="w-full px-4 py-2.5 rounded-xl glass-input text-sm outline-none font-mono" placeholder="123456789">
+          <p class="text-[10px] text-gray-400 mt-1">Found in your Facebook Page URL</p>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Access Token</label>
+          <textarea name="accessToken" rows="3" required class="w-full px-4 py-2.5 rounded-xl glass-input text-sm outline-none resize-none font-mono text-xs" placeholder="EAABs... (copied from Graph API Explorer)"></textarea>
+          <p class="text-[10px] text-gray-400 mt-1">Copied from Step 4 of the guide</p>
+        </div>
+      </div>
+      <div class="flex gap-3 justify-end mt-4">
+        <button type="button" onclick="document.getElementById('fbConnectModal').close()" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+        <button type="submit" class="px-6 py-2 text-sm font-medium text-white rounded-lg flex items-center gap-1" style="background:linear-gradient(135deg, #1877f2, #42b72a)">
+          <i class="ri-link mr-1"></i> Connect
+        </button>
+      </div>
+    </form>
+  </div>
+</dialog>
+
+<!-- ===== Connect Instagram Modal ===== -->
+<dialog id="igConnectModal" class="modal">
+  <div class="modal-box glass-builder rounded-2xl max-w-md">
+    <h3 class="font-bold text-lg text-gray-900 mb-1">Connect Instagram Account</h3>
+    <p class="text-xs text-gray-500 mb-4">Paste the details you copied from the guide above</p>
+    <form action="/social-automation/connect/instagram" method="POST" data-loading-text="Connecting Instagram...">
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Instagram Username</label>
+          <input type="text" name="accountName" required class="w-full px-4 py-2.5 rounded-xl glass-input text-sm outline-none" placeholder="@mybusiness">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Instagram Business ID</label>
+          <input type="text" name="pageId" required class="w-full px-4 py-2.5 rounded-xl glass-input text-sm outline-none font-mono" placeholder="your_username or 178414...">
+          <p class="text-[10px] text-gray-400 mt-1">Your Instagram username or numeric Business ID</p>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Access Token</label>
+          <textarea name="accessToken" rows="3" required class="w-full px-4 py-2.5 rounded-xl glass-input text-sm outline-none resize-none font-mono text-xs" placeholder="EAABs... (copied from Graph API Explorer)"></textarea>
+          <p class="text-[10px] text-gray-400 mt-1">Copied from Step 5 of the guide</p>
+        </div>
+      </div>
+      <div class="flex gap-3 justify-end mt-4">
+        <button type="button" onclick="document.getElementById('igConnectModal').close()" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+        <button type="submit" class="px-6 py-2 text-sm font-medium text-white rounded-lg flex items-center gap-1" style="background:linear-gradient(135deg, #833ab4, #fd1d1d, #f77737)">
+          <i class="ri-link mr-1"></i> Connect
+        </button>
+      </div>
+    </form>
+  </div>
+</dialog>
+
+<!-- ===== Create Automation Modal ===== -->
+<dialog id="automationModal" class="modal">
+  <div class="modal-box glass-builder rounded-2xl max-w-lg">
+    <h3 class="font-bold text-lg text-gray-900 mb-4">Create DM Automation Rule</h3>
+    <form action="/social-automation/create" method="POST" data-loading-text="Creating automation...">
+      <div class="space-y-3">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Rule Name</label>
+            <input type="text" name="name" required class="w-full px-4 py-2.5 rounded-xl glass-input text-sm outline-none" placeholder="Price inquiry reply">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Platform</label>
+            <select name="platform" id="saPlatform" class="w-full px-4 py-2.5 rounded-xl glass-input text-sm outline-none bg-transparent" onchange="updateAccountSelect()">
+              <option value="facebook">Facebook</option>
+              <option value="instagram">Instagram</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Connected Account</label>
+          <select name="accountId" id="saAccountId" class="w-full px-4 py-2.5 rounded-xl glass-input text-sm outline-none bg-transparent">
+            <% const activeFb = fbAccounts.filter(function(a){return a.isActive;});
+               const activeIg = igAccounts.filter(function(a){return a.isActive;});
+               if (!activeFb.length && !activeIg.length) { %>
+              <option value="">No accounts connected - connect one first</option>
+            <% } %>
+            <% activeFb.forEach(function(a){ %>
+              <option value="<%= a.id %>" data-platform="facebook"><%= a.accountName %> (Facebook)</option>
+            <% }); %>
+            <% activeIg.forEach(function(a){ %>
+              <option value="<%= a.id %>" data-platform="instagram"><%= a.accountName %> (Instagram)</option>
+            <% }); %>
+          </select>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Trigger</label>
+            <select name="triggerType" class="w-full px-4 py-2.5 rounded-xl glass-input text-sm outline-none bg-transparent">
+              <option value="contains">Contains</option>
+              <option value="exact">Exact Match</option>
+              <option value="starts_with">Starts With</option>
+              <option value="regex">Regex</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Keyword / Phrase</label>
+            <input type="text" name="triggerValue" required class="w-full px-4 py-2.5 rounded-xl glass-input text-sm outline-none" placeholder="price, hello, help">
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Response Type</label>
+          <select name="responseType" id="saResponseType" onchange="toggleSaAiPrompt(this)" class="w-full px-4 py-2.5 rounded-xl glass-input text-sm outline-none bg-transparent">
+            <option value="static">Static Text Reply</option>
+            <option value="ai">AI Generated (Ollama)</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Response Message</label>
+          <textarea name="responseContent" rows="3" required class="w-full px-4 py-2.5 rounded-xl glass-input text-sm outline-none resize-none" placeholder="Thank you for messaging us! Our team will reply shortly."></textarea>
+        </div>
+        <div id="saAiPromptDiv" class="hidden">
+          <label class="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">AI Prompt Template</label>
+          <textarea name="aiPrompt" rows="2" class="w-full px-4 py-2.5 rounded-xl glass-input text-sm outline-none resize-none" placeholder="System prompt for AI generation..."></textarea>
+        </div>
+      </div>
+      <div class="flex gap-3 justify-end mt-4">
+        <button type="button" onclick="document.getElementById('automationModal').close()" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+        <button type="submit" class="px-6 py-2 btn-pink text-white text-sm font-medium rounded-lg"><i class="ri-save-line"></i> Create Rule</button>
+      </div>
+    </form>
+  </div>
+</dialog>
+
+<script>
+function toggleGuide(id) {
+  var el = document.getElementById(id);
+  el.classList.toggle('open');
+  // Close the other guide
+  var other = id === 'fbGuide' ? 'igGuide' : 'fbGuide';
+  document.getElementById(other).classList.remove('open');
+  // Scroll to guide
+  if (el.classList.contains('open')) {
+    setTimeout(function() { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
+  }
+}
+
+function copyText(text) {
+  navigator.clipboard.writeText(text).then(function() {
+    // Flash a toast or change icon
+    var btns = document.querySelectorAll('button[onclick*="' + text + '"]');
+    btns.forEach(function(btn) {
+      var old = btn.innerHTML;
+      btn.innerHTML = '<i class="ri-check-line text-green-500"></i>';
+      setTimeout(function() { btn.innerHTML = old; }, 1500);
+    });
+  });
+}
+
+function toggleSaAiPrompt(select) {
+  document.getElementById('saAiPromptDiv').classList.toggle('hidden', select.value !== 'ai');
+}
+
+function updateAccountSelect() {
+  var platform = document.getElementById('saPlatform').value;
+  var select = document.getElementById('saAccountId');
+  Array.from(select.options).forEach(function(opt) {
+    if (opt.dataset.platform) {
+      opt.style.display = opt.dataset.platform === platform ? '' : 'none';
+    }
+  });
+  for (var i = 0; i < select.options.length; i++) {
+    if (select.options[i].style.display !== 'none') { select.selectedIndex = i; break; }
+  }
+}
+
+function toggleRule(id, btn) {
+  fetch('/social-automation/toggle/' + id, { method: 'POST' })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.success) {
+        var icon = btn.querySelector('i');
+        icon.className = data.isActive ? 'ri-toggle-fill text-green-500 text-xl' : 'ri-toggle-line text-gray-400 text-xl';
+      }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', updateAccountSelect);
+</script>

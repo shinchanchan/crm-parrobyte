@@ -1,0 +1,74 @@
+<div class="mb-6">
+  <h2 class="text-xl font-bold text-gray-900">Transaction History</h2>
+  <p class="text-sm text-gray-500">All your credit transactions</p>
+</div>
+
+<!-- Credit Balance Card -->
+<div class="bg-white rounded-2xl border border-pink-100 p-6 mb-8">
+  <div class="flex items-center justify-between flex-wrap gap-3">
+    <div class="flex items-center gap-4">
+      <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-pink-400 to-pink-600 flex items-center justify-center text-white shadow-lg">
+        <i class="ri-coins-line text-2xl"></i>
+      </div>
+      <div>
+        <p class="text-sm text-gray-500">Available Credits</p>
+        <h3 class="text-3xl font-extrabold text-gray-900">₹<%= parseFloat(creditBalance).toFixed(2) %></h3>
+      </div>
+    </div>
+    <a href="/billing" class="px-5 py-2.5 btn-pink text-white text-sm font-medium rounded-xl hover:shadow-lg transition-all flex items-center gap-2">
+      <i class="ri-coins-line"></i> Top Up
+    </a>
+  </div>
+</div>
+
+<!-- Transactions Table -->
+<div class="bg-white rounded-2xl border border-pink-100 overflow-hidden">
+  <div class="p-5 border-b border-pink-100 flex items-center justify-between">
+    <h3 class="font-semibold text-gray-900">All Transactions</h3>
+    <span class="text-xs text-gray-500"><%= transactions.length %> total</span>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-gray-50 border-b border-pink-100">
+        <tr>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Date</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Type</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Amount</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Balance After</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Description</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        <% transactions.forEach(tx => { %>
+          <tr class="hover:bg-pink-50/50 transition-colors">
+            <td class="px-6 py-4 text-xs text-gray-500"><%= new Date(tx.createdAt).toLocaleString() %></td>
+            <td class="px-6 py-4">
+              <span class="text-xs px-2.5 py-1 rounded-full
+                <%= tx.type === 'subscription' ? 'bg-purple-100 text-purple-600' :
+                   tx.type === 'topup' || tx.type === 'add' || tx.type === 'signup_bonus' || tx.amount > 0 ? 'bg-green-100 text-green-600' :
+                   tx.amount === 0 ? 'bg-blue-100 text-blue-600' : 'bg-red-100 text-red-600' %>">
+                <%= tx.type === 'subscription' ? 'Subscription' : tx.type %>
+              </span>
+            </td>
+            <td class="px-6 py-4 font-medium
+              <%= tx.type === 'subscription' ? 'text-purple-600' :
+                 tx.amount > 0 ? 'text-green-600' : tx.amount === 0 ? 'text-blue-600' : 'text-red-600' %>">
+              <%= tx.amount > 0 ? '+' : '' %>₹<%= parseFloat(tx.amount).toFixed(2) %>
+            </td>
+            <td class="px-6 py-4 text-gray-900">₹<%= parseFloat(tx.balanceAfter).toFixed(2) %></td>
+            <td class="px-6 py-4 text-xs text-gray-500"><%= tx.description || '-' %></td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+  <% if (!transactions || transactions.length === 0) { %>
+    <div class="p-8 text-center">
+      <div class="w-16 h-16 rounded-full bg-pink-50 flex items-center justify-center mx-auto mb-3">
+        <i class="ri-exchange-line text-2xl text-pink-300"></i>
+      </div>
+      <p class="text-sm text-gray-500">No transactions yet</p>
+      <a href="/billing" class="text-sm text-pink-600 hover:underline mt-2 inline-block">Buy credits</a>
+    </div>
+  <% } %>
+</div>

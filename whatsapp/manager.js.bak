@@ -1,0 +1,929 @@
+import wwebjs from "whatsapp-web.js";
+const { Client, LocalAuth, MessageMedia, NoAuth } = wwebjs;
+import qrcode from "qrcode";
+import fs from "fs/promises";
+import path from "path";
+import { fileURLToPath } from "url";
+import { db } from "../server/lib/db.js";
+import { eq, and } from "drizzle-orm";
+import * as schema from "../db/schema.js";
+import { getAiConfigWithFallback } from "../server/lib/aiService.js";
+import { triggerWebhook } from "../server/lib/webhookTrigger.js";
+import { sendTestEmail } from "../server/lib/mail.js";
+
+/**
+ * Normalize phone number for WhatsApp
+ * - If already has @lid or @c.us or @g.us, return as-is (WhatsApp internal IDs)
+ * - For raw digit-only numbers: remove leading 0, add country code, append @c.us
+ */
+function normalizePhone(phone, countryCode) {
+  if (!phone) return null;
+
+  // Already a WhatsApp internal ID - NEVER modify these
+  if (phone.includes("@lid") || phone.includes("@c.us") || phone.includes("@g.us")) {
+    return phone;
+  }
+
+  let digits = String(phone).replace(/\D/g, "");
+
+  // Remove leading 0
+  if (digits.startsWith("0")) {
+    digits = digits.substring(1);
+  }
+
+  // If exactly 10 digits, add country code
+  if (digits.length === 10) {
+    digits = (countryCode || "91") + digits;
+  }
+
+  return digits + "@c.us";
+}
+
+/**
+ * Strip suffix for DB storage only (phone numbers stored without @suffix)
+ */
+function stripPhoneSuffix(phone) {
+  if (!phone) return "";
+  return String(phone).replace(/@c\.us$/, "").replace(/@lid$/, "").replace(/@g\.us$/, "");
+}
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const AUTH_DIR = path.join(process.cwd(), ".wwebjs_auth");
+
+// Detect Chromium/Chrome executable
+function findChromeExecutable() {
+  if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+    return process.env.PUPPETEER_EXECUTABLE_PATH;
+  }
+  const paths = [
+    "/usr/bin/google-chrome-stable",
+    "/usr/bin/google-chrome",
+    "/usr/bin/chromium-browser",
+    "/usr/bin/chromium",
+    "/snap/bin/chromium",
+    "/usr/lib/chromium/chromium",
+    "/opt/google/chrome/google-chrome",
+    "/opt/google/chrome/chrome",
+  ];
+  for (const p of paths) {
+    try {
+      if (require("fs").existsSync(p)) return p;
+    } catch (e) {}
+  }
+  return null;
+}
+
+const CHROME_PATH = findChromeExecutable();
+console.log("[WhatsApp] Chrome/Chromium path:", CHROME_PATH || "NOT FOUND - will use bundled Chromium");
+
+class WhatsAppManager {
+  constructor() {
+    this.clients = new Map();
+    this.qrCodes = new Map();
+    this.sessionStatus = new Map();
+    this.messageQueue = [];
+    this.processingQueue = false;
+    this.rateLimits = new Map();
+    this.userDisconnected = new Set(); // Track user-initiated disconnects (don't auto-reconnect)
+    this._ensureAuthDir();
+  }
+
+  async _ensureAuthDir() {
+    try {
+      await fs.mkdir(AUTH_DIR, { recursive: true });
+    } catch (e) {
+      console.error("Failed to create auth directory:", e.message);
+    }
+  }
+
+  async _cleanupAuth(clientId) {
+    try {
+      const authPath = path.join(AUTH_DIR, clientId);
+      await fs.rm(authPath, { recursive: true, force: true });
+    } catch (e) {}
+  }
+
+  async createSession(userId, sessionName, sessionId = null) {
+    let session;
+    try {
+      if (sessionId) {
+        const existing = await db.select().from(schema.whatsappSessions)
+          .where(eq(schema.whatsappSessions.id, sessionId));
+        session = existing[0];
+        if (!session) throw new Error("Session not found in database");
+      } else {
+        const result = await db.insert(schema.whatsappSessions).values({
+          userId,
+          sessionName,
+          status: "connecting",
+        }).returning();
+        session = result[0];
+      }
+    } catch (dbErr) {
+      console.error("Database error creating session:", dbErr);
+      throw dbErr;
+    }
+
+    const clientId = `${userId}_${session.id}`;
+    const authPath = path.join(AUTH_DIR, clientId);
+
+    // Clean any stale Chrome lock files before starting new browser
+    const lockFiles = ["SingletonLock", "SingletonSocket", "SingletonCookie"];
+    for (const lock of lockFiles) {
+      try {
+        await fs.unlink(path.join(authPath, lock));
+        console.log(`[${clientId}] Cleaned stale lock file: ${lock}`);
+      } catch (e) {
+        // Lock file may not exist — ignore
+      }
+    }
+
+    // Ensure auth subdirectory exists
+    try {
+      await fs.mkdir(authPath, { recursive: true });
+    } catch (e) {}
+
+    const client = new Client({
+      authStrategy: new LocalAuth({ dataPath: authPath }),
+      webVersionCache: { type: "local" },
+      puppeteer: {
+        headless: "new",
+        executablePath: CHROME_PATH || undefined,
+        args: [
+          "--no-sandbox",
+          "--disable-setuid-sandbox",
+          "--disable-dev-shm-usage",
+          "--disable-accelerated-2d-canvas",
+          "--no-first-run",
+          "--no-zygote",
+          "--single-process",
+          "--disable-gpu",
+          "--disable-background-networking",
+          "--disable-background-timer-throttling",
+          "--disable-backgrounding-occluded-windows",
+          "--disable-breakpad",
+          "--disable-component-update",
+          "--disable-default-apps",
+          "--disable-features=IsolateOrigins,site-per-process,TranslateUI",
+          "--disable-hang-monitor",
+          "--disable-ipc-flooding-protection",
+          "--disable-popup-blocking",
+          "--disable-prompt-on-repost",
+          "--disable-renderer-backgrounding",
+          "--force-color-profile=srgb",
+          "--metrics-recording-only",
+          "--mute-audio",
+          "--no-default-browser-check",
+          "--disable-extensions",
+          "--disable-blink-features=AutomationControlled",
+        ],
+        timeout: 120000,
+        bypassCSP: true,
+        defaultViewport: { width: 1280, height: 720 },
+      },
+    });
+
+    client.on("qr", async (qr) => {
+      try {
+        const qrDataUrl = await qrcode.toDataURL(qr);
+        this.qrCodes.set(clientId, qrDataUrl);
+        this.sessionStatus.set(clientId, "qr_ready");
+
+        await db.update(schema.whatsappSessions)
+          .set({ status: "qr_ready", qrCode: qrDataUrl })
+          .where(eq(schema.whatsappSessions.id, session.id));
+
+        console.log(`[${clientId}] QR code generated - ready to scan`);
+      } catch (err) {
+        console.error(`[${clientId}] QR generation error:`, err.message);
+      }
+    });
+
+    client.on("ready", async () => {
+      console.log(`[${clientId}] Client ready!`);
+      this.sessionStatus.set(clientId, "connected");
+      this.qrCodes.delete(clientId);
+
+      try {
+        const info = client.info;
+        await db.update(schema.whatsappSessions)
+          .set({
+            status: "connected",
+            phoneNumber: info?.wid?.user || null,
+            lastActivity: new Date(),
+            disconnectAlertSent: false,
+            qrCode: null,
+          })
+          .where(eq(schema.whatsappSessions.id, session.id));
+
+        // Trigger webhook for session connected
+        triggerWebhook(userId, "session.connected", {
+          sessionId: session.id,
+          sessionName: session.sessionName,
+          phoneNumber: info?.wid?.user || null,
+          timestamp: new Date().toISOString(),
+        });
+      } catch (err) {
+        console.error(`[${clientId}] Ready handler error:`, err.message);
+      }
+    });
+
+    client.on("disconnected", async (reason) => {
+      console.log(`[${clientId}] Disconnected:`, reason);
+      this.sessionStatus.set(clientId, "disconnected");
+      this.clients.delete(clientId);
+
+      try {
+        await db.update(schema.whatsappSessions)
+          .set({ status: "disconnected", lastActivity: new Date() })
+          .where(eq(schema.whatsappSessions.id, session.id));
+
+        // Trigger webhook for session disconnected
+        triggerWebhook(userId, "session.disconnected", {
+          sessionId: session.id,
+          sessionName: session.sessionName,
+          reason: reason || "unknown",
+          timestamp: new Date().toISOString(),
+        });
+
+        // Send email notification to user
+        await this._notifyUserOfDisconnect(userId, session.sessionName, reason || "Session disconnected from WhatsApp");
+      } catch (err) {
+        console.error(`[${clientId}] DB update error on disconnect:`, err.message);
+      }
+
+      // Auto-reconnect after 10s if this was NOT a user-initiated disconnect
+      // This handles "Execution context was destroyed" and other transient errors
+      if (!this.userDisconnected.has(clientId)) {
+        console.log(`[${clientId}] Auto-reconnecting in 10s (unexpected disconnect: ${reason})`);
+        setTimeout(() => {
+          this.reconnectSession(session.id).catch(err => {
+            console.error(`[${clientId}] Auto-reconnect failed:`, err.message);
+          });
+        }, 10000);
+      } else {
+        this.userDisconnected.delete(clientId); // Clear flag for next time
+      }
+
+      // Do NOT clean auth on disconnect - let LocalAuth keep the session data for reconnect
+    });
+
+    client.on("auth_failure", async (msg) => {
+      console.error(`[${clientId}] Auth failure:`, msg);
+      this.sessionStatus.set(clientId, "disconnected");
+
+      try {
+        await db.update(schema.whatsappSessions)
+          .set({ status: "disconnected" })
+          .where(eq(schema.whatsappSessions.id, session.id));
+      } catch (err) {
+        console.error(`[${clientId}] DB update error on auth failure:`, err.message);
+      }
+    });
+
+    // Catch-all error handler - prevents process crash from unhandled client errors
+    client.on("error", (err) => {
+      console.error(`[${clientId}] Client error (non-fatal):`, err.message || err);
+    });
+
+    client.on("message_create", async (msg) => {
+      if (msg.fromMe) return;
+      // Non-blocking: offload message handling to prevent event loop blocking
+      setImmediate(() => {
+        this.handleIncomingMessage(session.id, msg).catch(function(err) {
+          console.error("[MessageHandler] Error:", err.message);
+        });
+      });
+    });
+
+    // Initialize client with retry logic
+    // The "Execution context was destroyed" error happens when WhatsApp Web
+    // internally navigates during startup. We retry up to 5 times with delays.
+    let initAttempts = 0;
+    const maxAttempts = 5;
+    let lastError = null;
+
+    while (initAttempts < maxAttempts) {
+      initAttempts++;
+      try {
+        console.log(`[${clientId}] Initializing WhatsApp client (attempt ${initAttempts}/${maxAttempts})...`);
+        this.sessionStatus.set(clientId, "connecting");
+
+        // Delay before init to let browser settle, longer on retries
+        if (initAttempts > 1) {
+          const delayMs = initAttempts === 2 ? 5000 : 10000;
+          console.log(`[${clientId}] Waiting ${delayMs}ms before retry...`);
+          await new Promise(r => setTimeout(r, delayMs));
+        }
+
+        await client.initialize();
+        this.clients.set(clientId, { client, sessionId: session.id, userId });
+        console.log(`[${clientId}] Client initialized successfully`);
+        lastError = null;
+        break; // Success - exit retry loop
+
+      } catch (initErr) {
+        lastError = initErr;
+        const errMsg = initErr.message || "";
+        console.error(`[${clientId}] Init attempt ${initAttempts} failed:`, errMsg);
+
+        // If it's the "Execution context was destroyed" error, retry
+        // Otherwise, fail immediately for non-retryable errors
+        const isRetryable =
+          errMsg.includes("Execution context was destroyed") ||
+          errMsg.includes("Protocol error") ||
+          errMsg.includes("Target closed") ||
+          errMsg.includes("Navigation failed") ||
+          errMsg.includes("net::ERR") ||
+          errMsg.includes("page.evaluate") ||
+          errMsg.includes("evaluateHandle");
+
+        if (!isRetryable || initAttempts >= maxAttempts) {
+          break; // Non-retryable or max attempts reached
+        }
+      }
+    }
+
+    // If all retries failed, clean up and throw
+    if (lastError) {
+      console.error(`[${clientId}] All ${maxAttempts} init attempts failed. Last error:`, lastError.message);
+      this.sessionStatus.set(clientId, "disconnected");
+
+      try {
+        await db.update(schema.whatsappSessions)
+          .set({ status: "disconnected" })
+          .where(eq(schema.whatsappSessions.id, session.id));
+      } catch (dbErr) {
+        console.error(`[${clientId}] Failed to update DB status:`, dbErr.message);
+      }
+
+      // Clean up the client to free resources
+      try {
+        await client.destroy();
+      } catch (e) {}
+
+      throw new Error(`WhatsApp initialization failed after ${maxAttempts} attempts: ${lastError.message}`);
+    }
+
+    return session;
+  }
+
+  async handleIncomingMessage(sessionId, msg) {
+    try {
+      // Debug: log every incoming message
+      console.log(`[AutoReply] Incoming message from=${msg.from}, body="${msg.body || "(empty)"}"`);
+
+      const sessionRows = await db.select().from(schema.whatsappSessions)
+        .where(eq(schema.whatsappSessions.id, sessionId));
+
+      if (!sessionRows.length) {
+        console.log("[AutoReply] Session not found:", sessionId);
+        return;
+      }
+
+      const userId = sessionRows[0].userId;
+
+      // Trigger webhook for incoming message
+      triggerWebhook(userId, "message.received", {
+        sessionId,
+        from: msg.from,
+        body: msg.body,
+        timestamp: new Date().toISOString(),
+        hasMedia: msg.hasMedia || false,
+      });
+
+      // Skip messages from self
+      if (msg.fromMe) {
+        console.log("[AutoReply] Skipping message from self");
+        return;
+      }
+
+      // Skip if no message body
+      if (!msg.body || !msg.body.trim()) {
+        console.log("[AutoReply] Skipping empty message body");
+        return;
+      }
+
+      // Check if universal AI reply is enabled for this user
+      let universalAi = false;
+      try {
+        const aiConfig = await getAiConfigWithFallback(userId);
+        if (aiConfig && aiConfig.isActive && aiConfig.universalAiReply) {
+          universalAi = true;
+        }
+      } catch (e) { /* ignore */ }
+
+      // === UNIVERSAL AI REPLY: respond to ALL messages ===
+      if (universalAi) {
+        console.log(`[AutoReply] Universal AI mode active for user ${userId}`);
+        if (msg.from && msg.from.includes("@lid")) {
+          try {
+            const { generateAiResponse } = await import("../server/lib/aiService.js");
+            const aiResult = await generateAiResponse(userId, msg.body);
+            if (aiResult.success) {
+              await msg.reply(aiResult.response);
+              console.log(`[AI Universal] Immediate LID reply sent to ${msg.from}`);
+            }
+          } catch (lidErr) {
+            console.error(`[AI Universal] LID reply error:`, lidErr.message);
+          }
+        } else {
+          await this.queueAiResponse(userId, sessionId, msg.from, msg.body);
+          console.log(`[AI Universal] Queued AI reply for ${msg.from}`);
+        }
+        return;
+      }
+
+      // === KEYWORD-BASED: only respond to matching keywords ===
+      console.log(`[AutoReply] Fetching active rules for user ${userId}`);
+      const autoReplies = await db.select().from(schema.autoReplies)
+        .where(
+          and(
+            eq(schema.autoReplies.userId, userId),
+            eq(schema.autoReplies.isActive, true)
+          )
+        );
+
+      console.log(`[AutoReply] Found ${autoReplies.length} active rules for user ${userId}`);
+
+      if (!autoReplies.length) {
+        console.log(`[AutoReply] No active auto-reply rules for user ${userId}`);
+        return;
+      }
+
+      const messageBody = (msg.body || "").toLowerCase().trim();
+      console.log(`[AutoReply] Checking message "${messageBody}" against ${autoReplies.length} rules`);
+
+      for (const rule of autoReplies) {
+        let matches = false;
+        const triggerValue = (rule.triggerValue || "").toLowerCase().trim();
+
+        console.log(`[AutoReply] Rule "${rule.name}": type=${rule.triggerType}, trigger="${triggerValue}", responseType=${rule.responseType}`);
+
+        switch (rule.triggerType) {
+          case "exact":
+            matches = messageBody === triggerValue;
+            break;
+          case "contains":
+            matches = messageBody.includes(triggerValue);
+            break;
+          case "starts_with":
+            matches = messageBody.startsWith(triggerValue);
+            break;
+          case "ends_with":
+            matches = messageBody.endsWith(triggerValue);
+            break;
+          case "regex":
+            try {
+              const regex = new RegExp(triggerValue, "i");
+              matches = regex.test(msg.body);
+            } catch (e) {
+              matches = false;
+            }
+            break;
+        }
+
+        console.log(`[AutoReply] Rule "${rule.name}" match result: ${matches}`);
+
+        if (matches) {
+          console.log(`[AutoReply] MATCHED rule "${rule.name}" - responseType=${rule.responseType}`);
+
+          if (rule.responseType === "ai") {
+            // AI response
+            if (msg.from && msg.from.includes("@lid")) {
+              try {
+                const { generateAiResponse } = await import("../server/lib/aiService.js");
+                const aiResult = await generateAiResponse(userId, msg.body);
+                if (aiResult.success) {
+                  await msg.reply(aiResult.response);
+                  console.log(`[AI Keyword] Immediate LID reply to ${msg.from}`);
+                }
+              } catch (lidErr) {
+                console.error(`[AI Keyword] LID reply error:`, lidErr.message);
+              }
+            } else {
+              await this.queueAiResponse(userId, sessionId, msg.from, msg.body);
+              console.log(`[AI Queue] Queued AI response for user ${userId}, phone ${msg.from}`);
+            }
+          } else {
+            // STATIC response - send immediately using msg.reply
+            try {
+              console.log(`[AutoReply] Sending STATIC reply to ${msg.from}: "${rule.responseContent?.substring(0, 50)}..."`);
+              await msg.reply(rule.responseContent);
+              console.log(`[AutoReply] STATIC reply sent successfully to ${msg.from}`);
+              // Trigger webhook for auto-reply sent
+              triggerWebhook(userId, "message.sent", {
+                sessionId,
+                to: msg.from,
+                body: rule.responseContent,
+                type: "auto_reply",
+                ruleName: rule.name,
+                timestamp: new Date().toISOString(),
+              });
+            } catch (replyErr) {
+              console.error(`[AutoReply] STATIC reply send error:`, replyErr.message);
+            }
+          }
+          break; // Only match first rule
+        }
+      }
+    } catch (error) {
+      console.error("[AutoReply] handler error:", error.message);
+    }
+  }
+
+  /**
+   * Queue an AI response for background processing with 45s gap
+   */
+  async queueAiResponse(userId, sessionId, phone, incomingMessage) {
+    try {
+      // Store phone exactly as received - normalizePhone preserves @lid and @c.us
+      const normalizedPhone = normalizePhone(phone) || phone;
+
+      await db.insert(schema.aiMessageQueue).values({
+        userId,
+        sessionId,
+        phone: normalizedPhone,
+        incomingMessage,
+        status: "queued",
+      });
+    } catch (err) {
+      console.error("[AI Queue] queueAiResponse error:", err.message);
+    }
+  }
+
+  /**
+   * Send a reply message (used by AI processor for @c.us contacts only)
+   */
+  async sendReply(sessionId, phone, content) {
+    try {
+      // For @c.us contacts only - @lid contacts are handled immediately in handleIncomingMessage
+      const normalizedPhone = normalizePhone(phone) || phone;
+      await this.sendMessage(sessionId, normalizedPhone, content, "text");
+    } catch (err) {
+      console.error("[AI Queue] sendReply error:", err.message);
+      // Don't throw - let the processor handle retries
+    }
+  }
+
+  async sendMessage(sessionId, phone, content, type = "text", mediaUrl = null) {
+    const sessionRows = await db.select().from(schema.whatsappSessions)
+      .where(eq(schema.whatsappSessions.id, sessionId));
+
+    if (!sessionRows.length) throw new Error("Session not found");
+
+    const userId = sessionRows[0].userId;
+    const clientId = `${userId}_${sessionId}`;
+    const clientData = this.clients.get(clientId);
+
+    if (!clientData) throw new Error("WhatsApp client not connected");
+
+    if (!this.checkRateLimit(userId)) {
+      throw new Error("Rate limit exceeded. Please wait before sending more messages.");
+    }
+
+    const chatId = normalizePhone(phone) || phone;
+
+    // Safety check: @lid contacts should be handled via msg.reply, not sendMessage
+    if (chatId.includes("@lid")) {
+      console.warn(`[WhatsApp] sendMessage called with @lid contact: ${chatId}. LID contacts must use msg.reply() instead.`);
+      throw new Error("Cannot sendMessage to @lid contact. Use msg.reply() for LID contacts.");
+    }
+
+    try {
+      let result;
+
+      if (type === "text" || !mediaUrl) {
+        result = await clientData.client.sendMessage(chatId, content);
+      } else {
+        let media;
+
+        if (mediaUrl.startsWith("http")) {
+          const response = await fetch(mediaUrl);
+          const buffer = await response.arrayBuffer();
+          const base64 = Buffer.from(buffer).toString("base64");
+          const mimeType = response.headers.get("content-type") || "application/octet-stream";
+          media = new MessageMedia(mimeType, base64, "file");
+        } else {
+          media = MessageMedia.fromFilePath(mediaUrl);
+        }
+
+        result = await clientData.client.sendMessage(chatId, media, { caption: content });
+      }
+
+      await db.insert(schema.messages).values({
+        userId,
+        sessionId,
+        phone: chatId,
+        type: type || "text",
+        content,
+        mediaUrl,
+        status: "sent",
+        sentAt: new Date(),
+      });
+
+      return result;
+    } catch (error) {
+      await db.insert(schema.messages).values({
+        userId,
+        sessionId,
+        phone: chatId,
+        type: type || "text",
+        content,
+        mediaUrl,
+        status: "failed",
+        errorMessage: error.message,
+      });
+
+      throw error;
+    }
+  }
+
+  checkRateLimit(userId) {
+    const now = Date.now();
+    const windowMs = 60 * 1000;
+    const maxRequests = 30;
+
+    let limit = this.rateLimits.get(userId);
+
+    if (!limit || now > limit.resetTime) {
+      limit = { count: 1, resetTime: now + windowMs };
+      this.rateLimits.set(userId, limit);
+      return true;
+    }
+
+    if (limit.count >= maxRequests) {
+      return false;
+    }
+
+    limit.count++;
+    return true;
+  }
+
+  async disconnectSession(sessionId, preserveAuth = false) {
+    const sessionRows = await db.select().from(schema.whatsappSessions)
+      .where(eq(schema.whatsappSessions.id, sessionId));
+
+    if (!sessionRows.length) return;
+
+    const userId = sessionRows[0].userId;
+    const clientId = `${userId}_${sessionId}`;
+    this.userDisconnected.add(clientId); // Mark as user-initiated
+    const clientData = this.clients.get(clientId);
+
+    if (clientData) {
+      try {
+        // Force-kill browser process to prevent "already running" lock errors
+        const browser = clientData.client.pupBrowser;
+        if (browser && browser.process && browser.process()) {
+          try {
+            browser.process().kill("SIGKILL");
+            console.log(`[${clientId}] Browser process killed via SIGKILL`);
+          } catch (killErr) {
+            console.error(`[${clientId}] Failed to kill browser process:`, killErr.message);
+          }
+        }
+        // Give the OS a moment to release the process
+        await new Promise(r => setTimeout(r, 500));
+        await clientData.client.destroy();
+      } catch (e) {
+        console.error(`[${clientId}] Error destroying client:`, e.message);
+      }
+      this.clients.delete(clientId);
+    }
+
+    this.qrCodes.delete(clientId);
+    this.sessionStatus.delete(clientId);
+
+    try {
+      await db.update(schema.whatsappSessions)
+        .set({ status: "disconnected" })
+        .where(eq(schema.whatsappSessions.id, sessionId));
+    } catch (err) {
+      console.error(`[${clientId}] DB update error:`, err.message);
+    }
+
+    // Only clean auth if explicitly requested (preserve for reconnects)
+    if (!preserveAuth) {
+      await this._cleanupAuth(clientId);
+    }
+  }
+
+  /**
+   * Send email notification to user when their WhatsApp session disconnects
+   */
+  async _notifyUserOfDisconnect(userId, sessionName, reason) {
+    try {
+      // Check if we already sent an alert for this session recently (avoid spam)
+      const sessionRows = await db.select({ disconnectAlertSent: schema.whatsappSessions.disconnectAlertSent })
+        .from(schema.whatsappSessions)
+        .where(and(
+          eq(schema.whatsappSessions.sessionName, sessionName),
+          eq(schema.whatsappSessions.userId, userId)
+        ));
+
+      // Get user email
+      const users = await db.select({ email: schema.users.email, name: schema.users.name })
+        .from(schema.users)
+        .where(eq(schema.users.id, userId));
+
+      if (!users.length) return;
+      const user = users[0];
+      if (!user.email) return;
+
+      // Determine if disconnect was from WhatsApp side or app side
+      const isAppSide = reason && (
+        reason.includes("restart") ||
+        reason.includes("server") ||
+        reason.includes("shutdown") ||
+        reason.includes("destroy")
+      );
+      const disconnectSource = isAppSide ? "Application" : "WhatsApp";
+      const actionText = isAppSide
+        ? "Your session was disconnected due to a server restart. Please log in and click <strong>Reconnect</strong> on your session to restore it."
+        : "Your WhatsApp session was disconnected. This usually happens when you log out from WhatsApp on your phone or your phone loses internet connection.";
+
+      const html = `
+        <div style="font-family:Arial,sans-serif;max-width:500px;margin:0 auto;padding:20px;border:1px solid #fce7f3;border-radius:16px;">
+          <div style="text-align:center;margin-bottom:20px;">
+            <h2 style="color:#ec4899;margin:0;">ParroByte CRM</h2>
+            <p style="color:#666;margin:5px 0 0;">WhatsApp Session Alert</p>
+          </div>
+          <p style="color:#333;">Hi ${user.name || "there"},</p>
+          <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:16px;margin:20px 0;">
+            <p style="color:#dc2626;margin:0;font-weight:bold;">
+              <i style="font-style:normal;margin-right:6px;">&#x26A0;</i>
+              Session Disconnected: ${sessionName}
+            </p>
+            <p style="color:#991b1b;margin:8px 0 0;font-size:13px;">
+              Source: <strong>${disconnectSource}</strong><br>
+              Reason: ${reason}
+            </p>
+          </div>
+          <p style="color:#333;">${actionText}</p>
+          <div style="text-align:center;margin:24px 0;">
+            <a href="${process.env.APP_URL || 'http://localhost:3000'}/sessions"
+               style="background:#ec4899;color:#fff;padding:12px 28px;border-radius:10px;text-decoration:none;font-weight:bold;display:inline-block;">
+              Go to Sessions
+            </a>
+          </div>
+          <p style="color:#666;font-size:12px;">If you did not expect this disconnect, please check your phone's WhatsApp connection.</p>
+          <hr style="border:none;border-top:1px solid #fce7f3;margin:20px 0;">
+          <p style="color:#999;font-size:12px;text-align:center;">ParroByte CRM &copy; ${new Date().getFullYear()}</p>
+        </div>
+      `;
+
+      await sendTestEmail(user.email, `WhatsApp Session Disconnected: ${sessionName}`, html);
+      console.log(`[Notify] Disconnect email sent to ${user.email} for session ${sessionName}`);
+
+      // Mark alert sent so we don't spam
+      try {
+        const session = await db.select({ id: schema.whatsappSessions.id })
+          .from(schema.whatsappSessions)
+          .where(and(
+            eq(schema.whatsappSessions.sessionName, sessionName),
+            eq(schema.whatsappSessions.userId, userId)
+          ));
+        if (session.length) {
+          await db.update(schema.whatsappSessions)
+            .set({ disconnectAlertSent: true })
+            .where(eq(schema.whatsappSessions.id, session[0].id));
+        }
+      } catch (e) {}
+    } catch (err) {
+      console.error("[Notify] Failed to send disconnect email:", err.message);
+    }
+  }
+
+  /**
+   * Gracefully destroy all active WhatsApp clients.
+   * Call this before server shutdown to preserve auth data.
+   */
+  async gracefulShutdown() {
+    console.log(`[WhatsAppManager] Graceful shutdown: destroying ${this.clients.size} client(s)...`);
+    const promises = [];
+    for (const [clientId, clientData] of this.clients.entries()) {
+      promises.push(
+        (async () => {
+          try {
+            await clientData.client.destroy();
+            console.log(`[${clientId}] Client destroyed cleanly`);
+          } catch (e) {
+            console.error(`[${clientId}] Error during destroy:`, e.message);
+          }
+        })()
+      );
+    }
+    await Promise.allSettled(promises);
+    this.clients.clear();
+    this.qrCodes.clear();
+    this.sessionStatus.clear();
+    console.log("[WhatsAppManager] All clients destroyed. Shutdown complete.");
+  }
+
+  /**
+   * Restore all previously connected sessions on server startup.
+   * Uses LocalAuth to reconnect without QR scan if auth data is valid.
+   */
+  async restoreAllSessions() {
+    try {
+      const sessions = await db.select().from(schema.whatsappSessions)
+        .where(eq(schema.whatsappSessions.status, "connected"));
+
+      if (!sessions.length) {
+        console.log("[Restore] No previously connected sessions to restore");
+        return;
+      }
+
+      console.log(`[Restore] Attempting to restore ${sessions.length} session(s)...`);
+      let restored = 0;
+      let failed = 0;
+
+      for (const session of sessions) {
+        const clientId = `${session.userId}_${session.id}`;
+        const authPath = path.join(AUTH_DIR, clientId);
+
+        // Clean stale Chrome lock files before restore attempt
+        const lockFiles = ["SingletonLock", "SingletonSocket", "SingletonCookie"];
+        for (const lock of lockFiles) {
+          try {
+            await fs.unlink(path.join(authPath, lock));
+            console.log(`[Restore] Cleaned stale lock: ${lock} for ${clientId}`);
+          } catch (e) {
+            // Lock file may not exist — ignore
+          }
+        }
+
+        try {
+          console.log(`[Restore] Restoring session ${session.id} (${session.sessionName}) for user ${session.userId}`);
+          await this.createSession(session.userId, session.sessionName, session.id);
+          restored++;
+        } catch (err) {
+          console.error(`[Restore] Failed to restore session ${session.id}:`, err.message);
+          failed++;
+
+          // Mark as disconnected since restore failed
+          try {
+            await db.update(schema.whatsappSessions)
+              .set({ status: "disconnected", qrCode: null })
+              .where(eq(schema.whatsappSessions.id, session.id));
+          } catch (dbErr) {}
+        }
+      }
+
+      console.log(`[Restore] Complete: ${restored} restored, ${failed} failed`);
+    } catch (err) {
+      console.error("[Restore] Error during session restore:", err.message);
+    }
+  }
+
+  getSessionStatus(sessionId, userId) {
+    const clientId = `${userId}_${sessionId}`;
+    const client = this.clients.get(clientId);
+    let phoneNumber = null;
+    try {
+      if (client && client.info && client.info.wid) {
+        phoneNumber = client.info.wid.user;
+      }
+    } catch (e) {}
+    return {
+      status: this.sessionStatus.get(clientId) || "disconnected",
+      qrCode: this.qrCodes.get(clientId) || null,
+      phoneNumber: phoneNumber,
+    };
+  }
+
+  async reconnectSession(sessionId) {
+    const sessionRows = await db.select().from(schema.whatsappSessions)
+      .where(eq(schema.whatsappSessions.id, sessionId));
+
+    if (!sessionRows.length) throw new Error("Session not found");
+
+    const s = sessionRows[0];
+    const clientId = `${s.userId}_${sessionId}`;
+
+    // Preserve auth data so LocalAuth can restore without QR scan
+    await this.disconnectSession(sessionId, true);
+
+    // Clean Chrome lock files that may linger after force-kill
+    const authPath = path.join(AUTH_DIR, clientId);
+    const lockFiles = ["SingletonLock", "SingletonSocket", "SingletonCookie"];
+    for (const lock of lockFiles) {
+      try {
+        await fs.unlink(path.join(authPath, lock));
+        console.log(`[${clientId}] Cleaned lock file: ${lock}`);
+      } catch (e) {
+        // Lock file may not exist — ignore
+      }
+    }
+
+    // Wait for puppeteer browser to fully shut down before creating new client
+    console.log(`[${clientId}] Waiting 5s for browser cleanup before reconnect...`);
+    await new Promise(r => setTimeout(r, 5000));
+
+    return await this.createSession(s.userId, s.sessionName, sessionId);
+  }
+}
+
+export default WhatsAppManager;

@@ -1,0 +1,209 @@
+<!-- WhatsApp Bulk Messaging Animated Demo -->
+<style>
+@keyframes bulk-msg-fly {
+  0% { transform: translateX(0) scale(1); opacity: 1; }
+  100% { transform: translateX(60px) scale(0.6); opacity: 0; }
+}
+@keyframes bulk-count-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes bulk-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(236, 72, 153, 0.3); }
+  50% { box-shadow: 0 0 0 12px rgba(236, 72, 153, 0); }
+}
+.bulk-demo-phone {
+  background: #1a1a2e;
+  border-radius: 24px;
+  padding: 12px;
+  width: 180px;
+  box-shadow: 0 20px 40px -10px rgba(0,0,0,0.3);
+  border: 3px solid #2d2d44;
+}
+.bulk-demo-screen {
+  background: #0f0f23;
+  border-radius: 16px;
+  height: 280px;
+  overflow: hidden;
+  position: relative;
+}
+.bulk-demo-contact {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 10px;
+  color: #e0e0e0;
+  opacity: 0;
+  transform: translateX(-20px);
+  transition: all 0.3s ease;
+}
+.bulk-demo-contact.sent {
+  opacity: 0.4;
+  transform: translateX(0);
+}
+.bulk-demo-contact.sending {
+  opacity: 1;
+  transform: translateX(0);
+  background: rgba(236,72,153,0.15);
+  border: 1px solid rgba(236,72,153,0.3);
+}
+.bulk-demo-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ec4899, #f472b6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  color: white;
+  flex-shrink: 0;
+}
+.bulk-demo-check {
+  color: #22c55e;
+  font-size: 12px;
+  margin-left: auto;
+}
+.bulk-demo-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: rgba(255,255,255,0.05);
+}
+.bulk-demo-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #ec4899, #f472b6);
+  width: 0%;
+  transition: width 0.5s ease;
+}
+</style>
+
+<div class="mb-6">
+  <div class="bg-gradient-to-br from-pink-50 to-purple-50 rounded-2xl border border-pink-100 p-6 overflow-hidden">
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <h3 class="font-bold text-gray-900 text-lg flex items-center gap-2">
+          <i class="ri-send-plane-fill text-pink-600"></i> Bulk Messaging Demo
+        </h3>
+        <p class="text-sm text-gray-500 mt-1">Send personalized messages to hundreds of contacts</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-600 rounded-full text-xs font-medium">
+          <i class="ri-checkbox-circle-line"></i> Live Demo
+        </span>
+      </div>
+    </div>
+
+    <div class="grid md:grid-cols-3 gap-4 items-center">
+      <!-- Upload Step -->
+      <div class="text-center p-4">
+        <div class="w-12 h-12 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center mx-auto mb-3 text-xl">
+          <i class="ri-file-upload-line"></i>
+        </div>
+        <p class="text-sm font-medium text-gray-900">1. Upload Contacts</p>
+        <p class="text-xs text-gray-500 mt-1">CSV with phone numbers</p>
+      </div>
+
+      <!-- Animated Phones -->
+      <div class="flex justify-center gap-3 py-2">
+        <div class="bulk-demo-phone">
+          <div class="bulk-demo-screen">
+            <div class="p-2">
+              <p class="text-[9px] text-gray-400 mb-2 px-1">Sending to 50 contacts...</p>
+              <div id="bulkContacts" class="space-y-1">
+                <!-- Contacts animated via JS -->
+              </div>
+            </div>
+            <div class="bulk-demo-progress">
+              <div class="bulk-demo-progress-bar" id="bulkProgress"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="text-center p-4">
+        <div class="w-12 h-12 rounded-xl bg-green-100 text-green-600 flex items-center justify-center mx-auto mb-3 text-xl">
+          <i class="ri-bar-chart-box-line"></i>
+        </div>
+        <p class="text-sm font-medium text-gray-900">3. Track Results</p>
+        <p class="text-xs text-gray-500 mt-1">Sent, delivered, failed</p>
+      </div>
+    </div>
+
+    <div class="mt-4 grid grid-cols-3 gap-3">
+      <div class="bg-white/60 rounded-xl p-3 text-center">
+        <p class="text-xl font-bold text-pink-600" id="bulkStatTotal">50</p>
+        <p class="text-xs text-gray-500">Contacts</p>
+      </div>
+      <div class="bg-white/60 rounded-xl p-3 text-center">
+        <p class="text-xl font-bold text-green-600" id="bulkStatSent">0</p>
+        <p class="text-xs text-gray-500">Sent</p>
+      </div>
+      <div class="bg-white/60 rounded-xl p-3 text-center">
+        <p class="text-xl font-bold text-blue-600">45s</p>
+        <p class="text-xs text-gray-500">Avg Gap</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const container = document.getElementById('bulkContacts');
+  const progress = document.getElementById('bulkProgress');
+  const statSent = document.getElementById('bulkStatSent');
+  const names = ['Rahul', 'Priya', 'Amit', 'Sneha', 'Vikram', 'Anjali', 'Rajesh', 'Deepa', 'Suresh', 'Kavita',
+                 'Arun', 'Meera', 'Gopal', 'Lakshmi', 'Manoj', 'Pooja', 'Sanjay', 'Rekha', 'Dinesh', 'Sunita'];
+  let contacts = [];
+
+  function createContacts() {
+    container.innerHTML = '';
+    contacts = [];
+    for (let i = 0; i < 8; i++) {
+      const name = names[i % names.length];
+      const el = document.createElement('div');
+      el.className = 'bulk-demo-contact';
+      el.innerHTML = `
+        <div class="bulk-demo-avatar">${name[0]}</div>
+        <span class="truncate flex-1">${name}</span>
+        <span class="bulk-demo-check" style="opacity:0"><i class="ri-check-line"></i></span>
+      `;
+      container.appendChild(el);
+      contacts.push({ el, sent: false });
+    }
+  }
+
+  function animateBulk() {
+    createContacts();
+    let sent = 0;
+    const total = contacts.length;
+
+    contacts.forEach((c, i) => {
+      setTimeout(() => {
+        c.el.classList.add('sending');
+        setTimeout(() => {
+          c.el.classList.remove('sending');
+          c.el.classList.add('sent');
+          c.el.querySelector('.bulk-demo-check').style.opacity = '1';
+          sent++;
+          statSent.textContent = sent;
+          progress.style.width = `${(sent / total) * 100}%`;
+        }, 600);
+      }, i * 800);
+    });
+
+    setTimeout(() => {
+      statSent.textContent = '0';
+      progress.style.width = '0%';
+      animateBulk();
+    }, total * 800 + 2000);
+  }
+
+  animateBulk();
+})();
+</script>

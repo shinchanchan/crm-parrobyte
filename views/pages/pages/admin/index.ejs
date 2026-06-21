@@ -1,0 +1,205 @@
+<div class="mb-6">
+  <h2 class="text-xl font-bold text-gray-900">Admin Panel</h2>
+  <p class="text-sm text-gray-500">Manage all users, sessions, and system settings</p>
+</div>
+
+<!-- Admin Navigation -->
+<div class="flex gap-3 mb-6 flex-wrap">
+  <a href="/admin/credits" class="px-5 py-2.5 bg-white border border-pink-200 text-pink-600 text-sm font-medium rounded-xl hover:bg-pink-50 transition-colors flex items-center gap-2">
+    <i class="ri-coins-line"></i> Credit Configuration
+  </a>
+  <a href="/admin/service-packages" class="px-5 py-2.5 bg-white border border-pink-200 text-pink-600 text-sm font-medium rounded-xl hover:bg-pink-50 transition-colors flex items-center gap-2">
+    <i class="ri-stack-line"></i> Service Packages
+  </a>
+  <a href="/admin/subscription-plans" class="px-5 py-2.5 bg-white border border-pink-200 text-pink-600 text-sm font-medium rounded-xl hover:bg-pink-50 transition-colors flex items-center gap-2">
+    <i class="ri-vip-crown-line"></i> Subscription Plans
+  </a>
+  <a href="/admin/user-subscriptions" class="px-5 py-2.5 bg-white border border-pink-200 text-pink-600 text-sm font-medium rounded-xl hover:bg-pink-50 transition-colors flex items-center gap-2">
+    <i class="ri-user-star-line"></i> User Subscriptions
+  </a>
+  <a href="/admin/landing-enquiries" class="px-5 py-2.5 bg-white border border-pink-200 text-pink-600 text-sm font-medium rounded-xl hover:bg-pink-50 transition-colors flex items-center gap-2">
+    <i class="ri-mail-line"></i> Landing Enquiries
+  </a>
+  <a href="/admin/activity-logs" class="px-5 py-2.5 bg-white border border-pink-200 text-pink-600 text-sm font-medium rounded-xl hover:bg-pink-50 transition-colors flex items-center gap-2">
+    <i class="ri-shield-check-line"></i> Activity Logs
+  </a>
+  <% if (typeof razorpayKeyId !== 'undefined' && razorpayKeyId) { %>
+    <span class="px-4 py-2.5 bg-green-50 border border-green-200 text-green-600 text-sm font-medium rounded-xl flex items-center gap-2">
+      <i class="ri-secure-payment-line"></i> Razorpay Active
+    </span>
+  <% } else { %>
+    <span class="px-4 py-2.5 bg-amber-50 border border-amber-200 text-amber-600 text-sm font-medium rounded-xl flex items-center gap-2">
+      <i class="ri-alert-line"></i> Razorpay Not Configured
+    </span>
+  <% } %>
+</div>
+
+<!-- Stats -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+  <% const adminStats = [
+    { label: 'Total Users', value: stats.totalUsers, icon: 'ri-user-line', color: 'bg-blue-100 text-blue-600' },
+    { label: 'Active Users', value: stats.activeUsers, icon: 'ri-user-follow-line', color: 'bg-green-100 text-green-600' },
+    { label: 'Connected Sessions', value: stats.connectedSessions, icon: 'ri-qr-code-line', color: 'bg-purple-100 text-purple-600' },
+    { label: 'Messages Sent', value: stats.sentMessages, icon: 'ri-send-plane-line', color: 'bg-pink-100 text-pink-600' },
+  ]; %>
+  <% adminStats.forEach(s => { %>
+    <div class="bg-white rounded-2xl p-5 border border-pink-100 card-hover">
+      <div class="flex items-center gap-3 mb-3">
+        <div class="w-10 h-10 rounded-xl <%= s.color %> flex items-center justify-center"><i class="<%= s.icon %>"></i></div>
+        <span class="text-sm text-gray-500"><%= s.label %></span>
+      </div>
+      <p class="text-2xl font-bold text-gray-900"><%= s.value %></p>
+    </div>
+  <% }); %>
+</div>
+
+<!-- Users Management -->
+<div class="bg-white rounded-2xl border border-pink-100 overflow-hidden mb-6">
+  <div class="p-5 border-b border-pink-100 flex items-center justify-between">
+    <h3 class="font-semibold text-gray-900">All Users</h3>
+    <span class="text-xs text-gray-500"><%= userPagination.total %> total</span>
+  </div>
+  <%
+  const userColumns = [
+    { key: 'name', label: 'User', sortable: true, searchable: true, format: (row) => `
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-full bg-gradient-to-br from-pink-400 to-pink-600 flex items-center justify-center text-white font-bold text-sm">${(row.name || '?').charAt(0).toUpperCase()}</div>
+        <div><p class="font-medium text-gray-900">${row.name || 'Unknown'}</p><p class="text-xs text-gray-500">${row.email}</p></div>
+      </div>
+    ` },
+    { key: 'role', label: 'Role', sortable: true, searchable: true, format: (row) => `<span class="text-xs capitalize bg-gray-100 text-gray-600 px-2 py-1 rounded-full">${row.role}</span>` },
+    { key: 'isActive', label: 'Status', sortable: true, searchable: false, format: (row) => `<span class="text-xs px-2 py-1 rounded-full ${row.isActive ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}">${row.isActive ? 'Active' : 'Inactive'}</span>` },
+    { key: 'sessions', label: 'Sessions', sortable: false, searchable: false, format: (row) => {
+      const sCount = userSessionCounts.get(row.id) || 0;
+      const sLimit = row.maxSessions !== null && row.maxSessions !== undefined ? row.maxSessions : 'Plan';
+      return `<span class="text-xs font-medium ${sCount >= (row.maxSessions || 999) ? 'text-red-600' : 'text-gray-600'}">${sCount} / ${sLimit}</span>`;
+    } },
+    { key: 'credits', label: 'Credits', sortable: true, searchable: false, format: (row) => `<span class="text-xs font-medium text-pink-600">₹${parseFloat(row.credits || 0).toFixed(2)}</span>` },
+    { key: 'actions', label: 'Actions', sortable: false, searchable: false, format: (row) => `
+      <div class="flex items-center justify-end gap-2">
+        <button onclick="addCreditsModal('${row.id}', '${row.name}')" class="p-2 text-pink-600 hover:bg-pink-50 rounded-lg" title="Add Credits"><i class="ri-coins-line"></i></button>
+        <button onclick="editUser('${row.id}', '${row.name}', '${row.email}', '${row.role}', '${row.isActive}', '${row.maxSessions || ''}')" class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"><i class="ri-edit-line"></i></button>
+        <form action="/admin/user/toggle/${row.id}" method="POST" class="inline" onsubmit="return confirm('Toggle user status?')">
+          <button type="submit" class="p-2 ${row.isActive ? 'text-red-600 hover:bg-red-50' : 'text-green-600 hover:bg-green-50'} rounded-lg"><i class="ri-${row.isActive ? 'close-circle-line' : 'check-line'}"></i></button>
+        </form>
+      </div>
+    ` },
+  ];
+  %>
+  <%- include('../../partials/paginated-table', {
+    data: users,
+    columns: userColumns,
+    pagination: userPagination,
+    columnFilters: userColumnFilters,
+    sortCol: userSortCol,
+    sortDir: userSortDir,
+    actionPath: '/admin',
+  }) %>
+</div>
+
+<!-- Sessions Management -->
+<div class="bg-white rounded-2xl border border-pink-100 overflow-hidden">
+  <div class="p-5 border-b border-pink-100 flex items-center justify-between">
+    <h3 class="font-semibold text-gray-900">My Sessions</h3>
+    <span class="text-xs text-gray-500"><%= sessions.length %> total</span>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-gray-50 border-b border-pink-100">
+        <tr>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Session</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Phone</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Status</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Last Activity</th>
+          <th class="text-right px-6 py-3 font-medium text-gray-700">Actions</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        <% sessions.forEach(s => { %>
+          <tr class="hover:bg-pink-50/50 transition-colors">
+            <td class="px-6 py-4 font-medium text-gray-900"><%= s.sessionName %></td>
+            <td class="px-6 py-4 text-gray-600"><%= s.phoneNumber || 'N/A' %></td>
+            <td class="px-6 py-4"><span class="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full <%= s.status === 'connected' ? 'bg-green-100 text-green-700' : s.status === 'qr_ready' ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700' %>"><span class="w-2 h-2 rounded-full status-<%= s.status %>"></span><%= s.status %></span></td>
+            <td class="px-6 py-4 text-xs text-gray-500"><%= s.lastActivity ? new Date(s.lastActivity).toLocaleString() : 'N/A' %></td>
+            <td class="px-6 py-4 text-right">
+              <form action="/admin/session/delete/<%= s.id %>" method="POST" class="inline" onsubmit="return confirm('Delete this session?')">
+                <button type="submit" class="p-2 text-red-600 hover:bg-red-50 rounded-lg"><i class="ri-delete-bin-line"></i></button>
+              </form>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<dialog id="editUserModal" class="modal">
+  <div class="modal-box bg-white rounded-2xl max-w-md">
+    <h3 class="font-bold text-lg text-gray-900 mb-4">Edit User</h3>
+    <form id="editUserForm" action="" method="POST" data-loading-text="Updating user...">
+      <div class="grid grid-cols-2 gap-4">
+        <div><label class="block text-sm font-medium text-gray-700 mb-1">Name</label><input type="text" name="name" id="euName" required class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm"></div>
+        <div><label class="block text-sm font-medium text-gray-700 mb-1">Email</label><input type="email" name="email" id="euEmail" required class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm"></div>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div><label class="block text-sm font-medium text-gray-700 mb-1">Role</label>
+          <select name="role" id="euRole" class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm bg-white"><option value="user">User</option><option value="admin">Admin</option></select>
+        </div>
+        <div><label class="block text-sm font-medium text-gray-700 mb-1">Max Sessions <span class="text-gray-400 font-normal">(override)</span></label>
+          <input type="number" name="maxSessions" id="euMaxSessions" min="0" placeholder="Plan default"
+            class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm">
+          <p class="text-[10px] text-gray-400 mt-0.5">Leave empty to use plan limit</p>
+        </div>
+      </div>
+      <div class="mb-4">
+        <div class="flex items-center gap-2 pt-2"><input type="checkbox" name="isActive" id="euIsActive" class="rounded border-pink-200 text-pink-600 focus:ring-pink-500"><label class="text-sm text-gray-700 font-medium">Account Active</label></div>
+      </div>
+      <div class="flex gap-3 justify-end">
+        <button type="button" onclick="document.getElementById('editUserModal').close()" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+        <button type="submit" class="px-6 py-2 btn-pink text-white text-sm font-medium rounded-lg"><i class="ri-save-line"></i> Update</button>
+      </div>
+    </form>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+<!-- Add Credits Modal -->
+<dialog id="addCreditsModal" class="modal">
+  <div class="modal-box bg-white rounded-2xl max-w-sm">
+    <h3 class="font-bold text-lg text-gray-900 mb-4">Add Credits</h3>
+    <p class="text-sm text-gray-500 mb-4">Adding credits to: <span id="acUserName" class="font-medium text-gray-900"></span></p>
+    <form id="addCreditsForm" action="" method="POST" data-loading-text="Adding credits...">
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Credit Amount</label>
+        <input type="number" name="amount" required min="1" class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm">
+      </div>
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Reason (optional)</label>
+        <input type="text" name="reason" placeholder="Admin bonus" class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm">
+      </div>
+      <div class="flex gap-3 justify-end">
+        <button type="button" onclick="document.getElementById('addCreditsModal').close()" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+        <button type="submit" class="px-6 py-2 btn-pink text-white text-sm font-medium rounded-lg"><i class="ri-coins-line"></i> Add Credits</button>
+      </div>
+    </form>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+<script>
+function addCreditsModal(id, name) {
+  document.getElementById('addCreditsForm').action = '/admin/user/add-credits/' + id;
+  document.getElementById('acUserName').textContent = name;
+  document.getElementById('addCreditsModal').showModal();
+}
+
+function editUser(id, name, email, role, isActive, maxSessions) {
+  document.getElementById('editUserForm').action = '/admin/user/update/' + id;
+  document.getElementById('euName').value = name;
+  document.getElementById('euEmail').value = email;
+  document.getElementById('euRole').value = role;
+  document.getElementById('euMaxSessions').value = maxSessions === 'null' || maxSessions === 'undefined' ? '' : maxSessions;
+  document.getElementById('euIsActive').checked = isActive === 'true' || isActive === true || isActive === 1;
+  document.getElementById('editUserModal').showModal();
+}
+</script>

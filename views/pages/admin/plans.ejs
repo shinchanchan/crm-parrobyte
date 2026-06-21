@@ -1,0 +1,130 @@
+<div class="mb-6">
+  <h2 class="text-xl font-bold text-gray-900">Plan Configuration</h2>
+  <p class="text-sm text-gray-500">Manage subscription plans, pricing, and feature access per tier</p>
+</div>
+
+<div class="space-y-6">
+  <% plans.forEach(plan => { %>
+    <%
+    // Parse current features for this plan
+    let currentFeatures = {};
+    try {
+      currentFeatures = JSON.parse(plan.features || '{}');
+    } catch(e) { currentFeatures = {}; }
+
+    // Feature definitions with display labels and icons
+    const featureDefs = [
+      { key: 'dashboard', label: 'Dashboard', icon: 'ri-dashboard-line' },
+      { key: 'sessions', label: 'WhatsApp Sessions', icon: 'ri-qr-code-line' },
+      { key: 'contacts', label: 'Contacts', icon: 'ri-contacts-line' },
+      { key: 'templates', label: 'Templates', icon: 'ri-file-list-line' },
+      { key: 'bulk', label: 'Bulk Messages', icon: 'ri-send-plane-fill' },
+      { key: 'schedule', label: 'Schedule Messages', icon: 'ri-calendar-schedule-line' },
+      { key: 'autoReply', label: 'Auto Reply', icon: 'ri-robot-line' },
+      { key: 'aiAssistant', label: 'AI Assistant', icon: 'ri-brain-line' },
+      { key: 'socialAutomation', label: 'Social Automation', icon: 'ri-messenger-line' },
+      { key: 'youtube', label: 'YouTube Automation', icon: 'ri-youtube-line' },
+      { key: 'instagram', label: 'Instagram Automation', icon: 'ri-instagram-line' },
+      { key: 'enquiryForms', label: 'Enquiry Forms', icon: 'ri-survey-line' },
+      { key: 'leads', label: 'Leads', icon: 'ri-user-search-line' },
+      { key: 'scraper', label: 'Business Scraper', icon: 'ri-map-pin-line' },
+      { key: 'apiKeys', label: 'API Keys', icon: 'ri-key-line' },
+      { key: 'polls', label: 'Poll Results', icon: 'ri-bar-chart-box-line' },
+      { key: 'webhooks', label: 'Webhooks', icon: 'ri-webhook-line' },
+      { key: 'billing', label: 'Billing & Plans', icon: 'ri-bill-line' },
+      { key: 'developer', label: 'Developer API', icon: 'ri-code-box-line' },
+      { key: 'help', label: 'Help Center', icon: 'ri-question-line' },
+    ];
+    %>
+    <div class="bg-white rounded-2xl border border-pink-100 p-6 card-hover">
+      <div class="flex items-start justify-between mb-4">
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 rounded-xl 
+            <%= plan.name === 'free' ? 'bg-gray-100 text-gray-600' : plan.name === 'silver' ? 'bg-gray-200 text-gray-700' : plan.name === 'gold' ? 'bg-gradient-to-br from-yellow-400 to-yellow-500 text-white' : 'bg-gradient-to-br from-purple-400 to-purple-600 text-white' %>
+            flex items-center justify-center font-bold text-sm">
+            <%= plan.name.charAt(0).toUpperCase() %>
+          </div>
+          <div>
+            <h3 class="font-semibold text-gray-900"><%= plan.displayName %></h3>
+            <p class="text-xs text-gray-500 capitalize">$<%= plan.price %>/month &middot; <%= plan.maxSessions %> sessions &middot; <%= plan.maxContacts %> contacts</p>
+          </div>
+        </div>
+        <span class="text-xs px-2.5 py-1 rounded-full <%= plan.isActive ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500' %>"><%= plan.isActive ? 'Active' : 'Inactive' %></span>
+      </div>
+
+      <form action="/admin/plans/update/<%= plan.id %>" method="POST" data-loading-text="Updating plan configuration..." onsubmit="return buildFeatureJson('<%= plan.id %>')">
+        <!-- Numeric Limits -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+          <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Display Name</label>
+            <input type="text" name="displayName" value="<%= plan.displayName %>" required class="w-full px-3 py-2 rounded-lg border border-pink-200 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Price ($)</label>
+            <input type="number" name="price" value="<%= plan.price %>" min="0" class="w-full px-3 py-2 rounded-lg border border-pink-200 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Max Sessions</label>
+            <input type="number" name="maxSessions" value="<%= plan.maxSessions %>" min="1" class="w-full px-3 py-2 rounded-lg border border-pink-200 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Max Contacts</label>
+            <input type="number" name="maxContacts" value="<%= plan.maxContacts %>" min="1" class="w-full px-3 py-2 rounded-lg border border-pink-200 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Max Templates</label>
+            <input type="number" name="maxTemplates" value="<%= plan.maxTemplates %>" min="1" class="w-full px-3 py-2 rounded-lg border border-pink-200 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Max Scrape Records</label>
+            <input type="number" name="maxScrapeRecords" value="<%= plan.maxScrapeRecords %>" min="1" class="w-full px-3 py-2 rounded-lg border border-pink-200 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-700 mb-1">Sort Order</label>
+            <input type="number" name="sortOrder" value="<%= plan.sortOrder %>" class="w-full px-3 py-2 rounded-lg border border-pink-200 text-sm">
+          </div>
+          <div class="flex items-center gap-2 pt-6">
+            <input type="checkbox" name="isActive" <%= plan.isActive ? 'checked' : '' %> class="rounded border-pink-200 text-pink-600">
+            <label class="text-sm text-gray-700">Active</label>
+          </div>
+        </div>
+
+        <!-- Feature Toggles -->
+        <div class="mb-4">
+          <p class="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-3">Available Features</p>
+          <p class="text-xs text-gray-500 mb-3">Toggle which menu items and features are visible to users on this plan tier.</p>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3" id="featureGrid_<%= plan.id %>">
+            <% featureDefs.forEach(f => { %>
+              <label class="flex items-center gap-2 p-3 rounded-xl border border-gray-100 hover:border-pink-200 hover:bg-pink-50/50 transition-all cursor-pointer">
+                <input type="checkbox"
+                  class="feature-check-<%= plan.id %> rounded border-pink-200 text-pink-600"
+                  data-feature="<%= f.key %>"
+                  <%= currentFeatures[f.key] !== false ? 'checked' : '' %>>
+                <i class="<%= f.icon %> text-sm text-gray-400"></i>
+                <span class="text-xs font-medium text-gray-700"><%= f.label %></span>
+              </label>
+            <% }); %>
+          </div>
+          <input type="hidden" name="features" id="featuresJson_<%= plan.id %>" value='<%= plan.features || "{}" %>'>
+        </div>
+
+        <div class="flex justify-end">
+          <button type="submit" class="px-5 py-2 btn-pink text-white text-sm font-medium rounded-lg flex items-center gap-2">
+            <i class="ri-save-line"></i> Update Plan
+          </button>
+        </div>
+      </form>
+    </div>
+  <% }); %>
+</div>
+
+<script>
+function buildFeatureJson(planId) {
+  const features = {};
+  document.querySelectorAll('.feature-check-' + planId).forEach(function(cb) {
+    features[cb.dataset.feature] = cb.checked;
+  });
+  document.getElementById('featuresJson_' + planId).value = JSON.stringify(features);
+  return true;
+}
+</script>

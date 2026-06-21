@@ -1,0 +1,439 @@
+<div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+  <div>
+    <h2 class="text-xl font-bold text-gray-900">Message Templates</h2>
+    <p class="text-sm text-gray-500">Create and manage reusable message templates</p>
+  </div>
+  <button onclick="document.getElementById('createModal').showModal()" class="px-5 py-2.5 btn-pink text-white text-sm font-medium rounded-xl hover:shadow-lg transition-all flex items-center gap-2 w-fit">
+    <i class="ri-add-line"></i> Create Template
+  </button>
+</div>
+
+<% if (templates && templates.length > 0) { %>
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <% templates.forEach(template => { %>
+      <div class="bg-white rounded-2xl border border-pink-100 p-5 card-hover">
+        <div class="flex items-start justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <% if (template.type === 'image') { %>
+              <i class="ri-image-line text-pink-500 text-lg"></i>
+            <% } else if (template.type === 'video') { %>
+              <i class="ri-video-line text-pink-500 text-lg"></i>
+            <% } else if (template.type === 'audio') { %>
+              <i class="ri-mic-line text-pink-500 text-lg"></i>
+            <% } else if (template.type === 'document') { %>
+              <i class="ri-file-line text-pink-500 text-lg"></i>
+            <% } else { %>
+              <i class="ri-chat-1-line text-pink-500 text-lg"></i>
+            <% } %>
+            <h3 class="font-semibold text-gray-900 text-sm"><%= template.name %></h3>
+          </div>
+          <div class="flex items-center gap-1">
+            <button onclick="editTemplate('<%= template.id %>', '<%= template.name %>', '<%= (template.content || '').replace(/\'/g, "\\'") %>', '<%= template.type %>', '<%= template.mediaUrl || '' %>', '<%= (template.variables || '').replace(/\'/g, "\\'") %>')" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+              <i class="ri-edit-line"></i>
+            </button>
+            <form action="/templates/delete/<%= template.id %>" method="POST" class="inline" onsubmit="return confirm('Delete this template?')">
+              <button type="submit" class="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                <i class="ri-delete-bin-line"></i>
+              </button>
+            </form>
+          </div>
+        </div>
+        <p class="text-sm text-gray-600 mb-3 line-clamp-3"><%= template.content %></p>
+        <% if (template.mediaUrl) { %>
+          <div class="mb-3 rounded-xl overflow-hidden bg-gray-50">
+            <% if (template.type === 'image') { %>
+              <img src="<%= template.mediaUrl %>" alt="" class="w-full h-32 object-cover">
+            <% } else if (template.type === 'video') { %>
+              <video src="<%= template.mediaUrl %>" class="w-full h-32 object-cover"></video>
+            <% } else if (template.type === 'audio') { %>
+              <audio src="<%= template.mediaUrl %>" controls class="w-full p-2"></audio>
+            <% } else { %>
+              <div class="flex items-center gap-2 p-3 text-sm text-gray-600">
+                <i class="ri-file-line text-lg"></i>
+                <span class="truncate"><%= template.mediaUrl.split('/').pop() %></span>
+              </div>
+            <% } %>
+          </div>
+        <% } %>
+        <div class="flex items-center justify-between pt-3 border-t border-gray-100">
+          <span class="text-xs capitalize bg-gray-100 text-gray-600 px-2 py-1 rounded-full"><%= template.type %></span>
+          <span class="text-xs text-gray-400"><%= new Date(template.createdAt).toLocaleDateString() %></span>
+        </div>
+      </div>
+    <% }); %>
+  </div>
+
+  <!-- Pagination for Templates -->
+  <% if (typeof pagination !== 'undefined' && pagination && pagination.totalPages > 1) { %>
+  <style>
+    .page-btn { min-width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; font-size: 13px; font-weight: 500; border: 1px solid #e5e7eb; background: #fff; color: #374151; transition: all 0.15s; cursor: pointer; text-decoration: none; }
+    .page-btn:hover { border-color: #ec4899; color: #ec4899; }
+    .page-btn.active { background: #ec4899; color: #fff; border-color: #ec4899; }
+    .page-btn.disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
+    .per-page-select { padding: 6px 28px 6px 12px; border-radius: 10px; border: 1px solid #e5e7eb; background: #fff url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") right 8px center/16px no-repeat; font-size: 13px; color: #374151; appearance: none; -webkit-appearance: none; cursor: pointer; }
+  </style>
+  <div class="flex flex-wrap items-center justify-between gap-3 mt-6 px-2">
+    <div class="text-xs text-gray-500">
+      Showing <span class="font-semibold text-gray-700"><%= (pagination.page - 1) * pagination.perPage + 1 %></span>
+      – <span class="font-semibold text-gray-700"><%= Math.min(pagination.page * pagination.perPage, pagination.total) %></span>
+      of <span class="font-semibold text-gray-700"><%= pagination.total %></span> templates
+    </div>
+    <div class="flex items-center gap-2">
+      <a href="/templates?page=<%= pagination.page - 1 %>&perPage=<%= pagination.perPage %>" class="page-btn <%= pagination.hasPrev ? '' : 'disabled' %>"><i class="ri-arrow-left-s-line"></i></a>
+      <% if (pagination.startPage > 1) { %>
+        <a href="/templates?page=1&perPage=<%= pagination.perPage %>" class="page-btn">1</a>
+        <% if (pagination.startPage > 2) { %><span class="text-gray-400 text-sm px-1">...</span><% } %>
+      <% } %>
+      <% pagination.pageRange.forEach(p => { %>
+        <a href="/templates?page=<%= p %>&perPage=<%= pagination.perPage %>" class="page-btn <%= p === pagination.page ? 'active' : '' %>"><%= p %></a>
+      <% }); %>
+      <% if (pagination.endPage < pagination.totalPages) { %>
+        <% if (pagination.endPage < pagination.totalPages - 1) { %><span class="text-gray-400 text-sm px-1">...</span><% } %>
+        <a href="/templates?page=<%= pagination.totalPages %>&perPage=<%= pagination.perPage %>" class="page-btn"><%= pagination.totalPages %></a>
+      <% } %>
+      <a href="/templates?page=<%= pagination.page + 1 %>&perPage=<%= pagination.perPage %>" class="page-btn <%= pagination.hasNext ? '' : 'disabled' %>"><i class="ri-arrow-right-s-line"></i></a>
+      <select class="per-page-select ml-2" onchange="window.location.href='/templates?page=1&perPage=' + this.value">
+        <option value="10" <%= pagination.perPage === 10 ? 'selected' : '' %>>10</option>
+        <option value="30" <%= pagination.perPage === 30 ? 'selected' : '' %>>30</option>
+        <option value="50" <%= pagination.perPage === 50 ? 'selected' : '' %>>50</option>
+      </select>
+    </div>
+  </div>
+  <% } %>
+
+<% } else { %>
+  <div class="bg-white rounded-2xl border border-pink-100 p-12 text-center">
+    <div class="w-16 h-16 rounded-full bg-pink-50 flex items-center justify-center mx-auto mb-3">
+      <i class="ri-file-list-line text-2xl text-pink-300"></i>
+    </div>
+    <h3 class="font-semibold text-gray-900 mb-2">No Templates Yet</h3>
+    <p class="text-sm text-gray-500 mb-4">Create your first message template</p>
+    <button onclick="document.getElementById('createModal').showModal()" class="px-6 py-2.5 btn-pink text-white text-sm font-medium rounded-xl inline-flex items-center gap-2">
+      <i class="ri-add-line"></i> Create Template
+    </button>
+  </div>
+<% } %>
+
+<dialog id="createModal" class="modal">
+  <div class="modal-box bg-white rounded-2xl max-w-lg">
+    <h3 class="font-bold text-lg text-gray-900 mb-4">Create Template</h3>
+    <form action="/templates/create" method="POST" enctype="multipart/form-data" data-loading-text="Creating...">
+      <div class="mb-3">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+        <input type="text" name="name" required class="w-full px-4 py-2.5 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm">
+      </div>
+      <div class="mb-3">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Type</label>
+        <select name="type" id="createModalSelect" class="w-full px-4 py-2.5 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm bg-white">
+          <option value="text">Text</option>
+          <option value="image">Image</option>
+          <option value="video">Video</option>
+          <option value="audio">Audio / Voice</option>
+          <option value="document">Document</option>
+          <option value="poll">Poll</option>
+        </select>
+      </div>
+      <div class="mb-3">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Content</label>
+        <textarea name="content" rows="3" placeholder="Use {{name}}, {{phone}}, {{email}} for dynamic lead values. They will be auto-replaced when sending." class="w-full px-4 py-2.5 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm"></textarea>
+      </div>
+      <div class="mb-3 hidden" id="createPollOptionsBox">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Poll Options *</label>
+        <textarea name="pollOptions" id="createPollOptions" rows="4" class="w-full px-4 py-2.5 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm font-mono text-xs resize-none" placeholder="Option 1&#10;Option 2&#10;Option 3" oninput="updateOptionResponses('create')"></textarea>
+        <p class="text-[10px] text-gray-400 mt-1">One option per line. Minimum 2 options.</p>
+      </div>
+      <div class="mb-3 hidden" id="createPollSettings">
+        <label class="flex items-center gap-2">
+          <input type="checkbox" name="pollAllowMultiple" value="true" class="rounded border-pink-200 text-pink-500">
+          <span class="text-sm text-gray-700">Allow multiple answers</span>
+        </label>
+      </div>
+      <div class="mb-3 hidden" id="createOptionResponsesBox">
+        <label class="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide"><i class="ri-robot-2-line mr-1 text-pink-500"></i> Auto-Response per Option</label>
+        <p class="text-[10px] text-gray-500 mb-2">When someone votes, automatically send the selected template.</p>
+        <div id="createOptionResponsesList" class="space-y-2"></div>
+      </div>
+      <!-- Hidden mediaUrl input for recorder -->
+      <input type="hidden" name="mediaUrl" id="createMediaUrl" value="">
+      <div class="mb-4" id="createFileUploadBox">
+        <label class="block text-sm font-medium text-gray-700 mb-1">
+          Media File <span id="createSizeHint" class="text-xs text-gray-400 font-normal">(optional — max 10MB)</span>
+        </label>
+        <input type="file" name="mediaFile" id="createMediaFile" accept="image/*,video/*,audio/*,.pdf,.doc,.docx"
+          class="w-full px-4 py-2.5 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-pink-50 file:text-pink-600 hover:file:bg-pink-100">
+        <p id="createFileError" class="text-xs text-red-600 mt-1 hidden"></p>
+      </div>
+      <div class="mb-4 hidden" id="createRecorderBox">
+        <%- include('../../partials/audio-recorder', { inputId: 'createMediaUrl', containerId: 'createRecorderWrap', showMic: false, showFileUpload: true }) %>
+      </div>
+      <div class="flex gap-3 justify-end">
+        <button type="button" onclick="document.getElementById('createModal').close()" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+        <button type="submit" id="createSaveBtn" class="px-6 py-2 btn-pink text-white text-sm font-medium rounded-lg"><i class="ri-save-line"></i> Save</button>
+      </div>
+    </form>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+<dialog id="editModal" class="modal">
+  <div class="modal-box bg-white rounded-2xl max-w-lg">
+    <h3 class="font-bold text-lg text-gray-900 mb-4">Edit Template</h3>
+    <form id="editForm" action="" method="POST" enctype="multipart/form-data" data-loading-text="Updating...">
+      <input type="hidden" name="_method" value="PUT">
+      <div class="mb-3">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+        <input type="text" name="name" id="editName" required class="w-full px-4 py-2.5 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm">
+      </div>
+      <div class="mb-3">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Type</label>
+        <select name="type" id="editType" class="w-full px-4 py-2.5 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm bg-white">
+          <option value="text">Text</option>
+          <option value="image">Image</option>
+          <option value="video">Video</option>
+          <option value="audio">Audio / Voice</option>
+          <option value="document">Document</option>
+          <option value="poll">Poll</option>
+        </select>
+      </div>
+      <div class="mb-3">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Content</label>
+        <textarea name="content" id="editContent" rows="3" placeholder="Use {{name}}, {{phone}}, {{email}} for dynamic lead values. They will be auto-replaced when sending." class="w-full px-4 py-2.5 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm"></textarea>
+      </div>
+      <div class="mb-3 hidden" id="editPollOptionsBox">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Poll Options *</label>
+        <textarea name="pollOptions" id="editPollOptions" rows="4" class="w-full px-4 py-2.5 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm font-mono text-xs resize-none" placeholder="Option 1&#10;Option 2&#10;Option 3" oninput="updateOptionResponses('edit')"></textarea>
+        <p class="text-[10px] text-gray-400 mt-1">One option per line. Minimum 2 options.</p>
+      </div>
+      <div class="mb-3 hidden" id="editPollSettings">
+        <label class="flex items-center gap-2">
+          <input type="checkbox" name="pollAllowMultiple" id="editPollAllowMultiple" value="true" class="rounded border-pink-200 text-pink-500">
+          <span class="text-sm text-gray-700">Allow multiple answers</span>
+        </label>
+      </div>
+      <div class="mb-3 hidden" id="editOptionResponsesBox">
+        <label class="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide"><i class="ri-robot-2-line mr-1 text-pink-500"></i> Auto-Response per Option</label>
+        <p class="text-[10px] text-gray-500 mb-2">When someone votes, automatically send the selected template.</p>
+        <div id="editOptionResponsesList" class="space-y-2"></div>
+      </div>
+      <!-- Hidden mediaUrl input for recorder -->
+      <input type="hidden" name="mediaUrl" id="editMediaUrl" value="">
+      <div class="mb-4" id="editFileUploadBox">
+        <label class="block text-sm font-medium text-gray-700 mb-1">
+          New Media <span id="editSizeHint" class="text-xs text-gray-400 font-normal">(optional — max 10MB)</span>
+        </label>
+        <input type="file" name="mediaFile" id="editMediaFile" accept="image/*,video/*,audio/*,.pdf,.doc,.docx"
+          class="w-full px-4 py-2.5 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-pink-50 file:text-pink-600 hover:file:bg-pink-100">
+        <p id="editFileError" class="text-xs text-red-600 mt-1 hidden"></p>
+      </div>
+      <div class="mb-4 hidden" id="editRecorderBox">
+        <%- include('../../partials/audio-recorder', { inputId: 'editMediaUrl', containerId: 'editRecorderWrap', showMic: false, showFileUpload: true }) %>
+      </div>
+      <div class="flex gap-3 justify-end">
+        <button type="button" onclick="document.getElementById('editModal').close()" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+        <button type="submit" id="editSaveBtn" class="px-6 py-2 btn-pink text-white text-sm font-medium rounded-lg"><i class="ri-save-line"></i> Update</button>
+      </div>
+    </form>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+<script>
+const MAX_MB = 10;
+
+function updateSizeHint(selectId, hintId) {
+  const type = document.getElementById(selectId).value;
+  const hint = document.getElementById(hintId);
+  if (type === 'text') {
+    hint.textContent = '(not applicable for text)';
+  } else {
+    hint.textContent = `(optional — max ${MAX_MB}MB)`;
+  }
+}
+
+const allTemplatesForResponses = <%- JSON.stringify((typeof allTemplates !== 'undefined' ? allTemplates : []).map(t => ({ id: t.id, name: t.name, type: t.type }))) %>;
+
+function toggleMediaInput(prefix, type) {
+  const fileBox = document.getElementById(prefix + 'FileUploadBox');
+  const recorderBox = document.getElementById(prefix + 'RecorderBox');
+  const mediaUrlInput = document.getElementById(prefix + 'MediaUrl');
+  const pollBox = document.getElementById(prefix + 'PollOptionsBox');
+  const pollSettings = document.getElementById(prefix + 'PollSettings');
+  const respBox = document.getElementById(prefix + 'OptionResponsesBox');
+  if (type === 'audio') {
+    fileBox.classList.add('hidden');
+    recorderBox.classList.remove('hidden');
+    if (pollBox) pollBox.classList.add('hidden');
+    if (pollSettings) pollSettings.classList.add('hidden');
+    if (respBox) respBox.classList.add('hidden');
+  } else if (type === 'poll') {
+    fileBox.classList.add('hidden');
+    recorderBox.classList.add('hidden');
+    if (pollBox) pollBox.classList.remove('hidden');
+    if (pollSettings) pollSettings.classList.remove('hidden');
+    if (respBox) respBox.classList.remove('hidden');
+    if (mediaUrlInput) mediaUrlInput.value = '';
+    updateOptionResponses(prefix);
+  } else {
+    fileBox.classList.remove('hidden');
+    recorderBox.classList.add('hidden');
+    if (pollBox) pollBox.classList.add('hidden');
+    if (pollSettings) pollSettings.classList.add('hidden');
+    if (respBox) respBox.classList.add('hidden');
+    if (mediaUrlInput) mediaUrlInput.value = '';
+  }
+}
+
+function updateOptionResponses(prefix) {
+  const optsTextarea = document.getElementById(prefix + 'PollOptions');
+  const list = document.getElementById(prefix + 'OptionResponsesList');
+  if (!optsTextarea || !list) return;
+  const options = optsTextarea.value.split('\n').map(o => o.trim()).filter(Boolean);
+  list.innerHTML = '';
+  if (options.length < 2) return;
+
+  options.forEach((opt, idx) => {
+    const row = document.createElement('div');
+    row.className = 'flex items-center gap-2 bg-white rounded-lg border border-green-200 px-3 py-2';
+
+    const label = document.createElement('span');
+    label.className = 'text-xs font-medium text-gray-700 flex-shrink-0 w-20 truncate';
+    label.title = opt;
+    label.textContent = opt;
+
+    const arrow = document.createElement('span');
+    arrow.className = 'text-xs text-gray-400';
+    arrow.textContent = '→';
+
+    const select = document.createElement('select');
+    select.name = 'optionResponse_' + idx;
+    select.dataset.option = opt;
+    select.className = 'flex-1 min-w-0 px-2 py-1.5 rounded-lg border border-pink-200 text-xs bg-white outline-none focus:border-pink-500';
+    select.innerHTML = '<option value="">No auto-response</option>' +
+      allTemplatesForResponses.map(t => '<option value="' + t.id + '">' + t.name + ' (' + t.type + ')</option>').join('');
+
+    row.appendChild(label);
+    row.appendChild(arrow);
+    row.appendChild(select);
+    list.appendChild(row);
+  });
+}
+
+function validateFileInput(fileInputId, errorId, submitBtnId) {
+  const fileInput = document.getElementById(fileInputId);
+  const errorEl = document.getElementById(errorId);
+  const submitBtn = document.getElementById(submitBtnId);
+
+  if (!fileInput.files || !fileInput.files[0]) {
+    errorEl.classList.add('hidden');
+    if (submitBtn) submitBtn.classList.remove('hidden');
+    return true;
+  }
+
+  const file = fileInput.files[0];
+  const sizeMB = file.size / 1024 / 1024;
+
+  if (sizeMB > MAX_MB) {
+    errorEl.textContent = `File too large (${sizeMB.toFixed(1)}MB). Maximum allowed is ${MAX_MB}MB. Please compress before uploading.`;
+    errorEl.classList.remove('hidden');
+    if (submitBtn) submitBtn.classList.add('hidden');
+    return false;
+  }
+
+  errorEl.classList.add('hidden');
+  if (submitBtn) submitBtn.classList.remove('hidden');
+  return true;
+}
+
+// Create modal
+document.getElementById('createModalSelect').addEventListener('change', function() {
+  const type = this.value;
+  updateSizeHint('createModalSelect', 'createSizeHint');
+  toggleMediaInput('create', type);
+  validateFileInput('createMediaFile', 'createFileError', 'createSaveBtn');
+});
+
+document.getElementById('createMediaFile').addEventListener('change', function() {
+  validateFileInput('createMediaFile', 'createFileError', 'createSaveBtn');
+});
+
+document.querySelector('#createModal form').addEventListener('submit', function(e) {
+  const type = document.getElementById('createModalSelect').value;
+  if (type !== 'audio') {
+    if (!validateFileInput('createMediaFile', 'createFileError', 'createSaveBtn')) {
+      e.preventDefault();
+    }
+  }
+});
+
+// Edit modal
+document.getElementById('editType').addEventListener('change', function() {
+  const type = this.value;
+  updateSizeHint('editType', 'editSizeHint');
+  toggleMediaInput('edit', type);
+  validateFileInput('editMediaFile', 'editFileError', 'editSaveBtn');
+});
+
+document.getElementById('editMediaFile').addEventListener('change', function() {
+  validateFileInput('editMediaFile', 'editFileError', 'editSaveBtn');
+});
+
+document.getElementById('editForm').addEventListener('submit', function(e) {
+  const type = document.getElementById('editType').value;
+  if (type !== 'audio') {
+    if (!validateFileInput('editMediaFile', 'editFileError', 'editSaveBtn')) {
+      e.preventDefault();
+    }
+  }
+});
+
+function editTemplate(id, name, content, type, mediaUrl, variables) {
+  document.getElementById('editForm').action = '/templates/update/' + id;
+  document.getElementById('editName').value = name;
+  document.getElementById('editContent').value = content;
+  document.getElementById('editType').value = type;
+  document.getElementById('editMediaFile').value = '';
+  document.getElementById('editMediaUrl').value = '';
+
+  // Parse poll variables
+  let pollOpts = '';
+  let allowMultiple = false;
+  let optionResponses = {};
+  if (variables) {
+    try {
+      const v = JSON.parse(variables);
+      if (v.pollOptions) pollOpts = v.pollOptions.join('\n');
+      if (v.allowMultipleAnswers) allowMultiple = true;
+      if (v.optionResponses) optionResponses = v.optionResponses;
+    } catch (e) {}
+  }
+  const pollOptionsEl = document.getElementById('editPollOptions');
+  const pollAllowEl = document.getElementById('editPollAllowMultiple');
+  if (pollOptionsEl) pollOptionsEl.value = pollOpts;
+  if (pollAllowEl) pollAllowEl.checked = allowMultiple;
+
+  updateSizeHint('editType', 'editSizeHint');
+  toggleMediaInput('edit', type);
+
+  // Populate option response dropdowns after they are built
+  setTimeout(() => {
+    const list = document.getElementById('editOptionResponsesList');
+    if (list) {
+      list.querySelectorAll('select').forEach(sel => {
+        const optName = sel.dataset.option;
+        if (optName && optionResponses[optName] && optionResponses[optName].templateId) {
+          sel.value = optionResponses[optName].templateId;
+        }
+      });
+    }
+  }, 50);
+
+  document.getElementById('editFileError').classList.add('hidden');
+  const saveBtn = document.getElementById('editSaveBtn');
+  if (saveBtn) saveBtn.classList.remove('hidden');
+  document.getElementById('editModal').showModal();
+}
+
+// Init
+updateSizeHint('createModalSelect', 'createSizeHint');
+toggleMediaInput('create', document.getElementById('createModalSelect').value);
+</script>

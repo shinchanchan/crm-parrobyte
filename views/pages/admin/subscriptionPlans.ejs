@@ -1,0 +1,265 @@
+<div class="mb-6">
+  <h2 class="text-xl font-bold text-gray-900">Subscription Plans</h2>
+  <p class="text-sm text-gray-500">Create and manage monthly subscription plans with unlimited service usage</p>
+</div>
+
+<!-- Admin Navigation -->
+<div class="flex gap-3 mb-6 flex-wrap">
+  <a href="/admin" class="px-5 py-2.5 bg-white border border-pink-200 text-pink-600 text-sm font-medium rounded-xl hover:bg-pink-50 transition-colors flex items-center gap-2">
+    <i class="ri-arrow-left-line"></i> Back to Admin
+  </a>
+  <a href="/admin/user-subscriptions" class="px-5 py-2.5 bg-white border border-pink-200 text-pink-600 text-sm font-medium rounded-xl hover:bg-pink-50 transition-colors flex items-center gap-2">
+    <i class="ri-user-star-line"></i> User Subscriptions
+  </a>
+</div>
+
+<!-- Create Plan Form -->
+<div class="bg-white rounded-2xl border border-pink-100 p-6 mb-8">
+  <h3 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+    <i class="ri-add-circle-line text-pink-500"></i> Create New Plan
+  </h3>
+  <form action="/admin/subscription-plans/create" method="POST" class="space-y-4">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Plan ID (unique slug)</label>
+        <input type="text" name="name" required placeholder="e.g. pro_monthly" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-200 focus:border-pink-400 outline-none text-sm">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Display Name</label>
+        <input type="text" name="displayName" required placeholder="e.g. Pro Monthly" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-200 focus:border-pink-400 outline-none text-sm">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Price (₹)</label>
+        <input type="number" name="price" required min="1" placeholder="999" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-200 focus:border-pink-400 outline-none text-sm">
+      </div>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Period (days)</label>
+        <input type="number" name="periodDays" required value="30" min="1" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-200 focus:border-pink-400 outline-none text-sm">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Max Sessions</label>
+        <input type="number" name="maxSessions" value="1" min="1" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-200 focus:border-pink-400 outline-none text-sm">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Max Contacts</label>
+        <input type="number" name="maxContacts" value="1000" min="1" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-200 focus:border-pink-400 outline-none text-sm">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Max Templates</label>
+        <input type="number" name="maxTemplates" value="50" min="1" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-200 focus:border-pink-400 outline-none text-sm">
+      </div>
+    </div>
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+      <input type="text" name="description" placeholder="Brief description of the plan" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-200 focus:border-pink-400 outline-none text-sm">
+    </div>
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-2">Included Services (select all that are unlimited)</label>
+      <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2">
+        <% configs.forEach(cfg => { %>
+          <label class="flex items-center gap-2 px-3 py-2 border border-gray-100 rounded-lg hover:bg-pink-50 cursor-pointer text-sm">
+            <input type="checkbox" name="includedServices" value="<%= cfg.serviceKey %>" class="w-4 h-4 text-pink-600 rounded border-gray-300 focus:ring-pink-500">
+            <span class="text-gray-700"><%= cfg.serviceName %></span>
+          </label>
+        <% }); %>
+      </div>
+      <p class="text-xs text-gray-400 mt-1">Selected services will have unlimited usage for subscribers. Unselected services will still charge credits.</p>
+    </div>
+    <div class="flex items-center gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Sort Order</label>
+        <input type="number" name="sortOrder" value="0" class="w-24 px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-200 focus:border-pink-400 outline-none text-sm">
+      </div>
+      <div class="pt-6">
+        <button type="submit" class="px-6 py-2.5 bg-gradient-to-r from-pink-500 to-pink-600 text-white text-sm font-medium rounded-xl hover:shadow-lg transition-all">
+          <i class="ri-add-line"></i> Create Plan
+        </button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- Plans List -->
+<div class="bg-white rounded-2xl border border-pink-100 overflow-hidden">
+  <div class="p-5 border-b border-pink-100 flex items-center justify-between">
+    <h3 class="font-semibold text-gray-900">All Subscription Plans</h3>
+    <span class="text-xs text-gray-500"><%= plans.length %> plans</span>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-gray-50 border-b border-pink-100">
+        <tr>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Plan</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Price</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Period</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Included Services</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Limits</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Status</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Actions</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        <% plans.forEach(plan => { %>
+          <% let included = []; try { included = JSON.parse(plan.includedServices || '[]'); } catch(e) {} %>
+          <tr class="hover:bg-pink-50/50 transition-colors">
+            <td class="px-6 py-4">
+              <div class="font-medium text-gray-900"><%= plan.displayName %></div>
+              <div class="text-xs text-gray-500"><%= plan.name %></div>
+              <div class="text-xs text-gray-400 mt-0.5"><%= plan.description || '-' %></div>
+            </td>
+            <td class="px-6 py-4 font-semibold text-gray-900">₹<%= plan.price %></td>
+            <td class="px-6 py-4 text-gray-600"><%= plan.periodDays %> days</td>
+            <td class="px-6 py-4">
+              <div class="flex flex-wrap gap-1">
+                <% included.forEach(svc => { %>
+                  <% const cfg = configs.find(c => c.serviceKey === svc); %>
+                  <span class="text-[10px] px-1.5 py-0.5 rounded bg-pink-50 text-pink-600 border border-pink-100"><%= cfg ? cfg.serviceName : svc %></span>
+                <% }); %>
+                <% if (included.length === 0) { %>
+                  <span class="text-xs text-gray-400">None</span>
+                <% } %>
+              </div>
+            </td>
+            <td class="px-6 py-4 text-xs text-gray-600">
+              <div><i class="ri-qr-code-line text-pink-400 mr-1"></i><%= plan.maxSessions %> sessions</div>
+              <div><i class="ri-contacts-line text-pink-400 mr-1"></i><%= plan.maxContacts %> contacts</div>
+              <div><i class="ri-file-list-line text-pink-400 mr-1"></i><%= plan.maxTemplates %> templates</div>
+            </td>
+            <td class="px-6 py-4">
+              <span class="text-xs px-2.5 py-1 rounded-full <%= plan.isActive ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500' %>">
+                <%= plan.isActive ? 'Active' : 'Inactive' %>
+              </span>
+            </td>
+            <td class="px-6 py-4">
+              <div class="flex items-center gap-2">
+                <button type="button" onclick="openEditPlan(<%= plan.id %>, '<%= plan.displayName.replace(/'/g, "\\'") %>', '<%= (plan.description || '').replace(/'/g, "\\'") %>', <%= plan.price %>, <%= plan.periodDays %>, <%= plan.maxSessions %>, <%= plan.maxContacts %>, <%= plan.maxTemplates %>, <%= plan.sortOrder %>, <%= plan.isActive %>, <%= JSON.stringify(included) %>)"
+                  class="p-2 text-pink-600 hover:bg-pink-50 rounded-lg transition-colors" title="Edit">
+                  <i class="ri-edit-line"></i>
+                </button>
+                <form action="/admin/subscription-plans/delete/<%= plan.id %>" method="POST" class="inline" onsubmit="return confirm('Delete this plan? Existing subscribers will keep their benefits until expiry.')">
+                  <button type="submit" class="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
+                    <i class="ri-delete-bin-line"></i>
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+  <% if (plans.length === 0) { %>
+    <div class="p-8 text-center">
+      <p class="text-sm text-gray-500">No subscription plans yet. Create one above.</p>
+    </div>
+  <% } %>
+</div>
+
+<!-- Edit Modal -->
+<div id="editPlanModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+  <div class="bg-white rounded-2xl w-full max-w-3xl mx-4 max-h-[90vh] overflow-y-auto">
+    <div class="p-6 border-b border-gray-100 flex items-center justify-between">
+      <h3 class="font-semibold text-gray-900">Edit Subscription Plan</h3>
+      <button onclick="closeEditPlan()" class="p-2 hover:bg-gray-100 rounded-lg"><i class="ri-close-line text-lg"></i></button>
+    </div>
+    <form id="editPlanForm" method="POST" class="p-6 space-y-4">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Display Name</label>
+          <input type="text" name="displayName" id="editDisplayName" required class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-200 focus:border-pink-400 outline-none text-sm">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Price (₹)</label>
+          <input type="number" name="price" id="editPrice" required min="1" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-200 focus:border-pink-400 outline-none text-sm">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Period (days)</label>
+          <input type="number" name="periodDays" id="editPeriodDays" required min="1" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-200 focus:border-pink-400 outline-none text-sm">
+        </div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Max Sessions</label>
+          <input type="number" name="maxSessions" id="editMaxSessions" min="1" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-200 focus:border-pink-400 outline-none text-sm">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Max Contacts</label>
+          <input type="number" name="maxContacts" id="editMaxContacts" min="1" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-200 focus:border-pink-400 outline-none text-sm">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Max Templates</label>
+          <input type="number" name="maxTemplates" id="editMaxTemplates" min="1" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-200 focus:border-pink-400 outline-none text-sm">
+        </div>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+        <input type="text" name="description" id="editDescription" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-200 focus:border-pink-400 outline-none text-sm">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Included Services</label>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-2" id="editServicesContainer">
+          <% configs.forEach(cfg => { %>
+            <label class="flex items-center gap-2 px-3 py-2 border border-gray-100 rounded-lg hover:bg-pink-50 cursor-pointer text-sm edit-service-label" data-key="<%= cfg.serviceKey %>">
+              <input type="checkbox" name="includedServices" value="<%= cfg.serviceKey %>" class="w-4 h-4 text-pink-600 rounded border-gray-300 focus:ring-pink-500 edit-service-checkbox">
+              <span class="text-gray-700"><%= cfg.serviceName %></span>
+            </label>
+          <% }); %>
+        </div>
+      </div>
+      <div class="flex items-center gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Sort Order</label>
+          <input type="number" name="sortOrder" id="editSortOrder" class="w-24 px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-200 focus:border-pink-400 outline-none text-sm">
+        </div>
+        <div class="flex items-center gap-2 pt-6">
+          <input type="checkbox" name="isActive" id="editIsActive" class="w-4 h-4 text-pink-600 rounded border-gray-300 focus:ring-pink-500">
+          <label class="text-sm text-gray-700">Active</label>
+        </div>
+      </div>
+      <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
+        <button type="button" onclick="closeEditPlan()" class="px-5 py-2.5 text-sm text-gray-600 hover:bg-gray-50 rounded-xl transition-colors">Cancel</button>
+        <button type="submit" class="px-6 py-2.5 bg-gradient-to-r from-pink-500 to-pink-600 text-white text-sm font-medium rounded-xl hover:shadow-lg transition-all">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function openEditPlan(id, displayName, description, price, periodDays, maxSessions, maxContacts, maxTemplates, sortOrder, isActive, includedServices) {
+  document.getElementById('editPlanForm').action = '/admin/subscription-plans/update/' + id;
+  document.getElementById('editDisplayName').value = displayName;
+  document.getElementById('editDescription').value = description;
+  document.getElementById('editPrice').value = price;
+  document.getElementById('editPeriodDays').value = periodDays;
+  document.getElementById('editMaxSessions').value = maxSessions;
+  document.getElementById('editMaxContacts').value = maxContacts;
+  document.getElementById('editMaxTemplates').value = maxTemplates;
+  document.getElementById('editSortOrder').value = sortOrder;
+  document.getElementById('editIsActive').checked = isActive;
+
+  // Reset all checkboxes
+  document.querySelectorAll('.edit-service-checkbox').forEach(cb => cb.checked = false);
+  // Check included services
+  if (Array.isArray(includedServices)) {
+    includedServices.forEach(key => {
+      const cb = document.querySelector('.edit-service-label[data-key="' + key + '"] .edit-service-checkbox');
+      if (cb) cb.checked = true;
+    });
+  }
+
+  document.getElementById('editPlanModal').classList.remove('hidden');
+  document.getElementById('editPlanModal').classList.add('flex');
+}
+
+function closeEditPlan() {
+  document.getElementById('editPlanModal').classList.add('hidden');
+  document.getElementById('editPlanModal').classList.remove('flex');
+}
+
+// Close modal on backdrop click
+document.getElementById('editPlanModal').addEventListener('click', function(e) {
+  if (e.target === this) closeEditPlan();
+});
+</script>

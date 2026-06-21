@@ -1,0 +1,368 @@
+<%
+  // Audio Recorder Partial
+  // Usage: include('../partials/audio-recorder', { inputId: 'myMediaUrl', containerId: 'recorderBox', typeInputId: 'myMessageType', showMic: false, showFileUpload: true })
+  // Props:
+  //   inputId (required) - hidden input ID to store the uploaded mediaUrl
+  //   containerId (optional) - wrapper div ID, defaults to inputId + "Wrapper"
+  //   typeInputId (optional) - hidden input ID to set message type to 'audio' on upload / 'text' on reset
+  //   showMic (optional) - show mic recorder UI, default true
+  //   showFileUpload (optional) - show file upload UI, default true
+  const cid = containerId || inputId + "Wrapper";
+  const _showMic = typeof showMic !== 'undefined' ? showMic : true;
+  const _showFileUpload = typeof showFileUpload !== 'undefined' ? showFileUpload : true;
+%>
+
+<div id="<%= cid %>" class="bg-pink-50 rounded-xl p-4 border border-pink-200">
+  <div class="flex items-center justify-between mb-3">
+    <span class="text-sm font-medium text-gray-700"><i class="ri-mic-line text-pink-500 mr-1"></i> Voice / Audio</span>
+    <span id="<%= cid %>Timer" class="text-sm font-mono text-pink-600">00:00</span>
+  </div>
+
+  <% if (_showMic) { %>
+  <!-- Record Controls -->
+  <div class="flex items-center gap-3 mb-3">
+    <button type="button" id="<%= cid %>RecordBtn" class="flex-1 py-2.5 bg-pink-600 text-white text-sm font-medium rounded-xl hover:bg-pink-700 transition-all flex items-center justify-center gap-2">
+      <i class="ri-mic-fill"></i> Record
+    </button>
+    <button type="button" id="<%= cid %>StopBtn" class="flex-1 py-2.5 bg-red-500 text-white text-sm font-medium rounded-xl hover:bg-red-600 transition-all flex items-center justify-center gap-2 hidden">
+      <i class="ri-stop-fill"></i> Stop
+    </button>
+  </div>
+
+  <!-- Playback + Actions (shown after recording) -->
+  <div id="<%= cid %>Playback" class="hidden">
+    <audio id="<%= cid %>AudioPlayer" controls preload="auto" class="w-full mb-3 rounded-lg"></audio>
+    <div class="flex items-center gap-3">
+      <button type="button" id="<%= cid %>RetakeBtn" class="flex-1 py-2 border border-gray-200 text-gray-600 text-sm font-medium rounded-xl hover:bg-gray-50 transition-all">
+        <i class="ri-restart-line"></i> Re-record
+      </button>
+      <button type="button" id="<%= cid %>UploadBtn" class="flex-1 py-2.5 btn-pink text-white text-sm font-medium rounded-xl hover:shadow-md transition-all flex items-center justify-center gap-2">
+        <span class="btn-text"><i class="ri-upload-cloud-line"></i> Use Recording</span>
+        <span class="btn-loading hidden"><i class="ri-loader-4-line animate-spin"></i> Uploading...</span>
+      </button>
+    </div>
+    <p id="<%= cid %>UploadStatus" class="text-xs text-gray-500 mt-2 text-center"></p>
+  </div>
+  <% } %>
+
+  <% if (_showMic && _showFileUpload) { %>
+  <!-- Divider -->
+  <div id="<%= cid %>Divider" class="flex items-center gap-3 my-3">
+    <div class="flex-1 h-px bg-pink-200"></div>
+    <span class="text-xs text-gray-500">or</span>
+    <div class="flex-1 h-px bg-pink-200"></div>
+  </div>
+  <% } %>
+
+  <% if (_showFileUpload) { %>
+  <!-- Upload File -->
+  <div id="<%= cid %>FileBox">
+    <label class="block text-xs font-medium text-gray-600 mb-1">Upload Audio File (max 150MB)</label>
+    <input type="file" id="<%= cid %>FileInput" accept="audio/*"
+      class="w-full px-3 py-2 rounded-xl border border-pink-200 text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-pink-50 file:text-pink-600 hover:file:bg-pink-100">
+
+    <!-- File Preview -->
+    <div id="<%= cid %>FilePreview" class="hidden mt-3">
+      <audio id="<%= cid %>FilePlayer" controls preload="auto" class="w-full mb-2 rounded-lg"></audio>
+      <div class="flex items-center gap-3">
+        <button type="button" id="<%= cid %>FileRemoveBtn" class="flex-1 py-2 border border-gray-200 text-gray-600 text-sm font-medium rounded-xl hover:bg-gray-50 transition-all">
+          <i class="ri-close-line"></i> Remove
+        </button>
+        <button type="button" id="<%= cid %>FileUploadBtn" class="flex-1 py-2.5 btn-pink text-white text-sm font-medium rounded-xl hover:shadow-md transition-all flex items-center justify-center gap-2">
+          <span class="btn-text"><i class="ri-upload-cloud-line"></i> Use File</span>
+          <span class="btn-loading hidden"><i class="ri-loader-4-line animate-spin"></i> Uploading...</span>
+        </button>
+      </div>
+      <p id="<%= cid %>FileStatus" class="text-xs text-gray-500 mt-2 text-center"></p>
+    </div>
+  </div>
+  <% } %>
+
+  <!-- Error -->
+  <p id="<%= cid %>Error" class="text-xs text-red-600 mt-2 hidden"></p>
+</div>
+
+<script>
+(function() {
+  const cid = '<%= cid %>';
+  const inputId = '<%= inputId %>';
+  const hasMic = <%= _showMic %>;
+  const hasFile = <%= _showFileUpload %>;
+
+  const recordBtn = hasMic ? document.getElementById(cid + 'RecordBtn') : null;
+  const stopBtn = hasMic ? document.getElementById(cid + 'StopBtn') : null;
+  const playbackDiv = hasMic ? document.getElementById(cid + 'Playback') : null;
+  const audioPlayer = hasMic ? document.getElementById(cid + 'AudioPlayer') : null;
+  const retakeBtn = hasMic ? document.getElementById(cid + 'RetakeBtn') : null;
+  const uploadBtn = hasMic ? document.getElementById(cid + 'UploadBtn') : null;
+  const timerEl = document.getElementById(cid + 'Timer');
+  const errorEl = document.getElementById(cid + 'Error');
+  const statusEl = hasMic ? document.getElementById(cid + 'UploadStatus') : null;
+  const hiddenInput = document.getElementById(inputId);
+  const typeInputIdValue = '<%= typeof typeInputId !== "undefined" ? typeInputId : "" %>';
+  const typeInput = typeInputIdValue ? document.getElementById(typeInputIdValue) : null;
+  const dividerEl = (hasMic && hasFile) ? document.getElementById(cid + 'Divider') : null;
+  const fileBox = hasFile ? document.getElementById(cid + 'FileBox') : null;
+  const fileInput = hasFile ? document.getElementById(cid + 'FileInput') : null;
+  const filePreview = hasFile ? document.getElementById(cid + 'FilePreview') : null;
+  const filePlayer = hasFile ? document.getElementById(cid + 'FilePlayer') : null;
+  const fileRemoveBtn = hasFile ? document.getElementById(cid + 'FileRemoveBtn') : null;
+  const fileUploadBtn = hasFile ? document.getElementById(cid + 'FileUploadBtn') : null;
+  const fileStatus = hasFile ? document.getElementById(cid + 'FileStatus') : null;
+
+  let mediaRecorder = null;
+  let audioChunks = [];
+  let timerInterval = null;
+  let startTime = 0;
+  let audioBlob = null;
+  let selectedFile = null;
+  let isUploading = false;
+
+  function formatTime(ms) {
+    const totalSec = Math.floor(ms / 1000);
+    const m = String(Math.floor(totalSec / 60)).padStart(2, '0');
+    const s = String(totalSec % 60).padStart(2, '0');
+    return m + ':' + s;
+  }
+
+  function showError(msg) {
+    errorEl.textContent = msg;
+    errorEl.classList.remove('hidden');
+  }
+
+  function clearError() {
+    errorEl.classList.add('hidden');
+  }
+
+  function resetAll() {
+    audioBlob = null;
+    audioChunks = [];
+    selectedFile = null;
+    if (audioPlayer) audioPlayer.src = '';
+    if (filePlayer) filePlayer.src = '';
+    if (fileInput) fileInput.value = '';
+    if (playbackDiv) playbackDiv.classList.add('hidden');
+    if (filePreview) filePreview.classList.add('hidden');
+    if (recordBtn) recordBtn.classList.remove('hidden');
+    if (stopBtn) stopBtn.classList.add('hidden');
+    if (dividerEl) dividerEl.classList.remove('hidden');
+    if (fileBox) fileBox.classList.remove('hidden');
+    if (timerEl) timerEl.textContent = '00:00';
+    if (statusEl) statusEl.textContent = '';
+    if (fileStatus) fileStatus.textContent = '';
+    isUploading = false;
+    if (hiddenInput) hiddenInput.value = '';
+    if (typeInput) typeInput.value = 'text';
+  }
+
+  // Prevent parent form submission while upload is in progress
+  const checkBtn = uploadBtn || fileUploadBtn;
+  const parentForm = checkBtn ? checkBtn.closest('form') : null;
+  if (parentForm) {
+    parentForm.addEventListener('submit', function(e) {
+      if (isUploading) {
+        e.preventDefault();
+        alert('Please wait for the audio upload to complete before sending.');
+        return false;
+      }
+      if (audioBlob && (!hiddenInput || !hiddenInput.value)) {
+        e.preventDefault();
+        alert('Please click "Use Recording" to upload your audio before sending.');
+        return false;
+      }
+    });
+  }
+
+  /* ───── Record ───── */
+  if (recordBtn) {
+    recordBtn.addEventListener('click', async function() {
+      clearError();
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' :
+                         MediaRecorder.isTypeSupported('audio/ogg') ? 'audio/ogg' : '';
+        console.log('[AudioRecorder] Using mimeType:', mimeType);
+        mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+        audioChunks = [];
+
+        mediaRecorder.ondataavailable = function(e) {
+          console.log('[AudioRecorder] ondataavailable, size:', e.data ? e.data.size : 0);
+          if (e.data && e.data.size > 0) audioChunks.push(e.data);
+        };
+
+        mediaRecorder.onstop = function() {
+          console.log('[AudioRecorder] onstop, chunks:', audioChunks.length);
+          stream.getTracks().forEach(t => t.stop());
+          if (audioChunks.length === 0) {
+            showError('No audio recorded. Please try again.');
+            resetAll();
+            return;
+          }
+          audioBlob = new Blob(audioChunks, { type: mimeType || 'audio/webm' });
+          const audioUrl = URL.createObjectURL(audioBlob);
+          audioPlayer.src = audioUrl;
+          playbackDiv.classList.remove('hidden');
+          recordBtn.classList.add('hidden');
+          stopBtn.classList.add('hidden');
+          if (dividerEl) dividerEl.classList.add('hidden');
+          if (fileBox) fileBox.classList.add('hidden');
+          clearInterval(timerInterval);
+          timerEl.textContent = formatTime(Date.now() - startTime);
+        };
+
+        mediaRecorder.onerror = function(e) {
+          console.error('[AudioRecorder] MediaRecorder error:', e);
+          showError('Recording error: ' + (e.message || 'Unknown error'));
+          stream.getTracks().forEach(t => t.stop());
+          resetAll();
+        };
+
+        mediaRecorder.start(1000);
+        startTime = Date.now();
+        timerInterval = setInterval(function() {
+          timerEl.textContent = formatTime(Date.now() - startTime);
+        }, 500);
+
+        recordBtn.classList.add('hidden');
+        stopBtn.classList.remove('hidden');
+      } catch (err) {
+        console.error('[AudioRecorder] getUserMedia error:', err);
+        showError('Microphone access denied or unavailable. Please use file upload instead.');
+      }
+    });
+  }
+
+  if (stopBtn) {
+    stopBtn.addEventListener('click', function() {
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+      }
+      clearInterval(timerInterval);
+    });
+  }
+
+  if (retakeBtn) {
+    retakeBtn.addEventListener('click', function() {
+      resetAll();
+    });
+  }
+
+  if (uploadBtn) {
+    uploadBtn.addEventListener('click', async function() {
+      if (!audioBlob) return;
+      const btnText = uploadBtn.querySelector('.btn-text');
+      const btnLoading = uploadBtn.querySelector('.btn-loading');
+      btnText.classList.add('hidden');
+      btnLoading.classList.remove('hidden');
+      uploadBtn.disabled = true;
+      statusEl.textContent = 'Uploading...';
+      isUploading = true;
+      clearError();
+
+      const formData = new FormData();
+      const ext = audioBlob.type.includes('ogg') ? 'ogg' : 'webm';
+      formData.append('audio', audioBlob, 'recording.' + ext);
+
+      try {
+        const res = await fetch('/uploads/audio', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (data.success) {
+          statusEl.textContent = 'Uploaded! Ready to send.';
+          statusEl.className = 'text-xs text-green-600 mt-2 text-center';
+          if (hiddenInput) hiddenInput.value = data.mediaUrl;
+          if (typeInput) typeInput.value = 'audio';
+          uploadBtn.classList.add('hidden');
+          retakeBtn.classList.add('hidden');
+        } else {
+          showError(data.error || 'Upload failed');
+          statusEl.textContent = '';
+        }
+      } catch (err) {
+        showError('Upload error: ' + err.message);
+        statusEl.textContent = '';
+      } finally {
+        btnText.classList.remove('hidden');
+        btnLoading.classList.add('hidden');
+        uploadBtn.disabled = false;
+        isUploading = false;
+      }
+    });
+  }
+
+  /* ───── File Upload ───── */
+  if (fileInput) {
+    fileInput.addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      if (file.size > 150 * 1024 * 1024) {
+        showError('File too large. Max 150MB allowed.');
+        fileInput.value = '';
+        return;
+      }
+      selectedFile = file;
+      const fileUrl = URL.createObjectURL(file);
+      filePlayer.src = '';
+      filePlayer.src = fileUrl;
+      filePlayer.load();
+      filePreview.classList.remove('hidden');
+
+      // Hide recorder while file is selected
+      if (recordBtn) recordBtn.classList.add('hidden');
+      if (dividerEl) dividerEl.classList.add('hidden');
+    });
+  }
+
+  if (fileRemoveBtn) {
+    fileRemoveBtn.addEventListener('click', function() {
+      fileInput.value = '';
+      selectedFile = null;
+      filePlayer.src = '';
+      filePreview.classList.add('hidden');
+      fileStatus.textContent = '';
+      if (recordBtn) recordBtn.classList.remove('hidden');
+      if (dividerEl) dividerEl.classList.remove('hidden');
+      if (hiddenInput) hiddenInput.value = '';
+    });
+  }
+
+  if (fileUploadBtn) {
+    fileUploadBtn.addEventListener('click', async function() {
+      if (!selectedFile) return;
+
+      const btnText = fileUploadBtn.querySelector('.btn-text');
+      const btnLoading = fileUploadBtn.querySelector('.btn-loading');
+      btnText.classList.add('hidden');
+      btnLoading.classList.remove('hidden');
+      fileUploadBtn.disabled = true;
+      fileStatus.textContent = 'Uploading...';
+      clearError();
+
+      const formData = new FormData();
+      formData.append('audio', selectedFile, selectedFile.name);
+
+      try {
+        const res = await fetch('/uploads/audio', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (data.success) {
+          fileStatus.textContent = 'Uploaded! Ready to send.';
+          fileStatus.className = 'text-xs text-green-600 mt-2 text-center';
+          if (hiddenInput) hiddenInput.value = data.mediaUrl;
+          if (typeInput) typeInput.value = 'audio';
+          fileUploadBtn.classList.add('hidden');
+          fileRemoveBtn.classList.add('hidden');
+        } else {
+          showError(data.error || 'Upload failed');
+          fileStatus.textContent = '';
+        }
+      } catch (err) {
+        showError('Upload error: ' + err.message);
+        fileStatus.textContent = '';
+      } finally {
+        btnText.classList.remove('hidden');
+        btnLoading.classList.add('hidden');
+        fileUploadBtn.disabled = false;
+      }
+    });
+  }
+})();
+</script>

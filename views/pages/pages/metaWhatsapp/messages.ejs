@@ -1,0 +1,100 @@
+<div class="mb-6">
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div>
+      <h2 class="text-xl font-bold text-gray-900">WhatsApp API Messages</h2>
+      <p class="text-sm text-gray-500">History of messages sent and received via Meta WhatsApp API</p>
+    </div>
+    <div class="flex gap-2">
+      <a href="/meta-whatsapp" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-xl transition-colors flex items-center gap-2">
+        <i class="ri-arrow-left-line"></i> Back
+      </a>
+      <a href="/meta-whatsapp/send" class="px-5 py-2.5 btn-pink text-white text-sm font-medium rounded-xl hover:shadow-lg transition-all flex items-center gap-2">
+        <i class="ri-send-plane-line"></i> Send Message
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- Messages Table -->
+<div class="bg-white rounded-2xl border border-pink-100 overflow-hidden">
+  <% if (messages.length === 0) { %>
+    <div class="p-12 text-center">
+      <div class="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center mx-auto mb-4">
+        <i class="ri-message-3-line text-2xl text-gray-300"></i>
+      </div>
+      <h3 class="font-semibold text-gray-900 mb-2">No Messages Yet</h3>
+      <p class="text-sm text-gray-500 mb-4">Send your first message via the Meta WhatsApp API.</p>
+      <a href="/meta-whatsapp/send" class="px-5 py-2.5 btn-pink text-white text-sm font-medium rounded-xl hover:shadow-lg transition-all inline-flex items-center gap-2">
+        <i class="ri-send-plane-line"></i> Send First Message
+      </a>
+    </div>
+  <% } else { %>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-gray-50 border-b border-gray-100">
+          <tr>
+            <th class="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Direction</th>
+            <th class="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Phone</th>
+            <th class="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Type</th>
+            <th class="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Content</th>
+            <th class="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
+            <th class="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Meta ID</th>
+            <th class="text-right px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Time</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          <% messages.forEach(msg => { %>
+            <tr class="hover:bg-gray-50/50 transition-colors">
+              <td class="px-6 py-4">
+                <span class="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full
+                  <%= msg.direction === 'outbound' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700' %>">
+                  <i class="ri-<%= msg.direction === 'outbound' ? 'arrow-right-up' : 'arrow-left-down' %>-line"></i>
+                  <%= msg.direction === 'outbound' ? 'Sent' : 'Received' %>
+                </span>
+              </td>
+              <td class="px-6 py-4">
+                <span class="text-xs font-mono text-gray-700">+<%= msg.phone %></span>
+              </td>
+              <td class="px-6 py-4">
+                <span class="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600 font-medium capitalize">
+                  <%= msg.type %>
+                  <% if (msg.templateName) { %>
+                    <span class="text-pink-500 ml-1"><%= msg.templateName %></span>
+                  <% } %>
+                </span>
+              </td>
+              <td class="px-6 py-4 max-w-xs">
+                <p class="text-sm text-gray-700 truncate" title="<%= msg.content %>"><%= msg.content || '—' %></p>
+                <% if (msg.errorMessage) { %>
+                  <p class="text-[10px] text-red-500 mt-0.5"><i class="ri-error-warning-line"></i> <%= msg.errorMessage %></p>
+                <% } %>
+              </td>
+              <td class="px-6 py-4">
+                <span class="inline-flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-full
+                  <%= msg.status === 'read' ? 'bg-green-100 text-green-700' : msg.status === 'delivered' ? 'bg-blue-100 text-blue-700' : msg.status === 'sent' ? 'bg-gray-100 text-gray-600' : msg.status === 'failed' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700' %>">
+                  <span class="w-1.5 h-1.5 rounded-full
+                    <%= msg.status === 'read' ? 'bg-green-500' : msg.status === 'delivered' ? 'bg-blue-500' : msg.status === 'sent' ? 'bg-gray-400' : msg.status === 'failed' ? 'bg-red-500' : 'bg-amber-500' %>"></span>
+                  <%= msg.status %>
+                </span>
+                <% if (msg.conversationCategory) { %>
+                  <p class="text-[10px] text-gray-400 mt-0.5"><%= msg.conversationCategory %></p>
+                <% } %>
+              </td>
+              <td class="px-6 py-4">
+                <span class="text-[10px] font-mono text-gray-400 truncate max-w-[100px] block" title="<%= msg.metaMessageId %>"><%= msg.metaMessageId || '—' %></span>
+              </td>
+              <td class="px-6 py-4 text-right">
+                <p class="text-xs text-gray-500"><%= new Date(msg.createdAt).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' }) %></p>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+    <% if (messages.length >= 200) { %>
+      <div class="px-6 py-3 border-t border-gray-100 text-center">
+        <p class="text-xs text-gray-400">Showing last 200 messages</p>
+      </div>
+    <% } %>
+  <% } %>
+</div>

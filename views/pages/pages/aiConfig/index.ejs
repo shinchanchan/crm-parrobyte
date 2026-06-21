@@ -1,0 +1,544 @@
+<style>
+  .ai-section-card {
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
+    border-radius: 20px;
+    transition: all 0.3s ease;
+  }
+  .ai-input {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1.5px solid rgba(0, 0, 0, 0.08);
+    border-radius: 14px;
+    padding: 12px 16px;
+    font-size: 13px;
+    transition: all 0.2s ease;
+    width: 100%;
+    outline: none;
+    color: #1f2937;
+  }
+  .ai-input:focus {
+    border-color: rgba(236, 72, 153, 0.4);
+    box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.1);
+  }
+  .ai-input::placeholder { color: rgba(0, 0, 0, 0.25); }
+  .ai-textarea {
+    min-height: 120px;
+    resize: vertical;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    line-height: 1.6;
+  }
+  .ai-toggle {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    flex-shrink: 0;
+  }
+  .ai-toggle input { opacity: 0; width: 0; height: 0; }
+  .ai-toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background: #e5e7eb;
+    border-radius: 24px;
+    transition: 0.3s;
+  }
+  .ai-toggle-slider::before {
+    content: '';
+    position: absolute;
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background: white;
+    border-radius: 50%;
+    transition: 0.3s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  }
+  .ai-toggle input:checked + .ai-toggle-slider { background: #ec4899; }
+  .ai-toggle input:checked + .ai-toggle-slider::before { transform: translateX(20px); }
+  .ai-mode-card {
+    border: 2px solid rgba(0, 0, 0, 0.06);
+    border-radius: 16px;
+    padding: 16px 20px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    background: rgba(255, 255, 255, 0.5);
+  }
+  .ai-mode-card:hover { border-color: rgba(236, 72, 153, 0.15); background: rgba(255, 255, 255, 0.8); }
+  .ai-mode-card.active-keyword { border-color: #3b82f6; background: rgba(59, 130, 246, 0.04); }
+  .ai-mode-card.active-universal { border-color: #8b5cf6; background: rgba(139, 92, 246, 0.04); }
+  .chat-bubble-user {
+    background: linear-gradient(135deg, #ec4899, #db2777);
+    color: white;
+    border-radius: 18px 18px 4px 18px;
+    padding: 12px 16px;
+    max-width: 80%;
+    margin-left: auto;
+    font-size: 13px;
+    line-height: 1.5;
+    word-break: break-word;
+  }
+  .chat-bubble-ai {
+    background: white;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    border-radius: 18px 18px 18px 4px;
+    padding: 12px 16px;
+    max-width: 80%;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #374151;
+    word-break: break-word;
+  }
+  .chat-bubble-ai pre {
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: inherit;
+    margin: 0;
+  }
+  .chat-scroll {
+    max-height: 420px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0,0,0,0.1) transparent;
+  }
+  .chat-scroll::-webkit-scrollbar { width: 5px; }
+  .chat-scroll::-webkit-scrollbar-track { background: transparent; }
+  .chat-scroll::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 10px; }
+  .label-sm {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: rgba(0, 0, 0, 0.45);
+    margin-bottom: 8px;
+    display: block;
+  }
+</style>
+
+<div class="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+  <div>
+    <h2 class="text-xl font-bold text-gray-900"><%= isAdmin ? 'AI Admin Configuration' : 'AI Assistant' %></h2>
+    <p class="text-sm text-gray-500 mt-1"><%= isAdmin ? 'Configure Ollama AI server and global settings' : 'Configure your AI prompt and test responses' %></p>
+  </div>
+  <div class="flex items-center gap-2">
+    <span class="text-xs px-3 py-1.5 rounded-full <%= config.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500' %> font-medium">
+      <%= config.isActive ? 'AI Active' : 'AI Inactive' %>
+    </span>
+    <% if (config.universalAiReply) { %>
+      <span class="text-xs px-3 py-1.5 rounded-full bg-purple-100 text-purple-700 font-medium">Universal</span>
+    <% } else { %>
+      <span class="text-xs px-3 py-1.5 rounded-full bg-blue-100 text-blue-700 font-medium">Keyword</span>
+    <% } %>
+  </div>
+</div>
+
+<!-- Admin: Ollama Server Config -->
+<% if (isAdmin) { %>
+<div class="ai-section-card p-6 mb-6">
+  <div class="flex items-center gap-3 mb-5">
+    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white">
+      <i class="ri-server-line text-lg"></i>
+    </div>
+    <div>
+      <h3 class="font-semibold text-gray-900">Ollama Server</h3>
+      <p class="text-xs text-gray-500">Global settings for all users</p>
+    </div>
+    <div class="ml-auto flex items-center gap-2">
+      <% if (health.ok) { %>
+        <span class="flex items-center gap-1.5 text-xs text-green-600 bg-green-50 px-2.5 py-1 rounded-full">
+          <span class="w-2 h-2 rounded-full bg-green-500"></span> Connected
+        </span>
+      <% } else { %>
+        <span class="flex items-center gap-1.5 text-xs text-red-600 bg-red-50 px-2.5 py-1 rounded-full">
+          <span class="w-2 h-2 rounded-full bg-red-500"></span> Disconnected
+        </span>
+      <% } %>
+      <button onclick="testOllama()" id="testOllamaBtn" class="px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-1">
+        <i class="ri-flashlight-line"></i> Test
+      </button>
+    </div>
+  </div>
+
+  <div id="testResult" class="hidden mb-4 p-3 rounded-xl text-xs"></div>
+
+  <div class="grid md:grid-cols-2 gap-4">
+    <div>
+      <label class="label-sm">Ollama URL</label>
+      <input type="url" name="ollamaUrl" form="aiConfigForm" value="<%= config.ollamaUrl || 'http://localhost:11434' %>"
+        class="ai-input font-mono" placeholder="http://localhost:11434">
+    </div>
+    <div>
+      <label class="label-sm">AI Model</label>
+      <input type="text" name="model" form="aiConfigForm" value="<%= config.model || 'translategemma:4b' %>"
+        class="ai-input font-mono" placeholder="translategemma:4b">
+      <p class="text-[10px] text-gray-400 mt-1.5">Your model: <code class="text-pink-600">ollama list</code> to see available</p>
+    </div>
+  </div>
+
+  <% if (health.ok && health.models.length) { %>
+    <div class="mt-4 flex flex-wrap gap-1.5">
+      <% health.models.forEach(function(m) { %>
+        <span class="text-[10px] px-2 py-1 rounded-full bg-gray-100 text-gray-600 font-medium"><%= m %></span>
+      <% }); %>
+    </div>
+  <% } %>
+</div>
+<% } else { %>
+<!-- User: Admin Ollama Info (read-only) -->
+<div class="ai-section-card p-5 mb-6">
+  <div class="flex items-center gap-3">
+    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white">
+      <i class="ri-server-line text-lg"></i>
+    </div>
+    <div class="flex-1">
+      <h3 class="font-semibold text-gray-900 text-sm">Ollama Server</h3>
+      <p class="text-xs text-gray-500">
+        <% if (adminConfig && adminConfig.ollamaUrl) { %>
+          <%= adminConfig.ollamaUrl %> | Model: <%= adminConfig.model || 'default' %>
+        <% } else { %>
+          Admin has not configured Ollama yet. Contact admin.
+        <% } %>
+      </p>
+    </div>
+    <span class="text-[10px] px-2.5 py-1 rounded-full bg-gray-100 text-gray-500">Admin managed</span>
+  </div>
+</div>
+<% } %>
+
+
+<!-- ===== Main Config Form (Prompt + Business + Toggles) ===== -->
+<div class="grid lg:grid-cols-5 gap-6">
+
+  <!-- LEFT: Config Form -->
+  <div class="lg:col-span-3">
+    <form action="/ai-config/save" method="POST" id="aiConfigForm" data-loading-text="Saving...">
+      <div class="ai-section-card p-6 mb-6">
+        <h3 class="font-semibold text-gray-900 mb-5 flex items-center gap-2">
+          <i class="ri-settings-3-line text-pink-500"></i>
+          <%= isAdmin ? 'AI Configuration' : 'Your AI Settings' %>
+        </h3>
+
+        <!-- Temperature + Max Tokens -->
+        <div class="grid sm:grid-cols-2 gap-4 mb-5">
+          <div>
+            <label class="label-sm">Temperature</label>
+            <input type="number" name="temperature" value="<%= config.temperature || '0.7' %>" min="0" max="2" step="0.1"
+              class="ai-input">
+            <p class="text-[10px] text-gray-400 mt-1.5">0 = focused, 1 = creative, 2 = very random</p>
+          </div>
+          <div>
+            <label class="label-sm">Max Tokens</label>
+            <input type="number" name="maxTokens" value="<%= config.maxTokens || 500 %>" min="50" max="2000" step="50"
+              class="ai-input">
+            <p class="text-[10px] text-gray-400 mt-1.5">Maximum response length (words)</p>
+          </div>
+        </div>
+
+        <!-- Toggles Row -->
+        <div class="grid sm:grid-cols-2 gap-4 mb-6">
+          <div class="flex items-center justify-between p-4 rounded-xl border border-gray-100 bg-gray-50/50">
+            <div>
+              <p class="text-sm font-medium text-gray-800">Enable AI Auto-Reply</p>
+              <p class="text-[11px] text-gray-400 mt-0.5">AI will respond to incoming messages</p>
+            </div>
+            <label class="ai-toggle">
+              <input type="checkbox" name="isActive" <%= config.isActive ? 'checked' : '' %>>
+              <span class="ai-toggle-slider"></span>
+            </label>
+          </div>
+          <div class="flex items-center justify-between p-4 rounded-xl border border-gray-100 bg-gray-50/50">
+            <div>
+              <p class="text-sm font-medium text-gray-800">Universal Reply</p>
+              <p class="text-[11px] text-gray-400 mt-0.5">Reply to ALL messages (no keywords)</p>
+            </div>
+            <label class="ai-toggle">
+              <input type="checkbox" name="universalAiReply" <%= config.universalAiReply ? 'checked' : '' %>>
+              <span class="ai-toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Response Language -->
+        <div class="mb-5">
+          <label class="label-sm">AI Response Language</label>
+          <select name="language" id="languageSelect" form="aiConfigForm"
+            class="ai-input !py-3 !text-sm"
+            onchange="onLanguageChange(this.value)">
+            <option value="en" <%= (config.language === 'en' || !config.language) ? 'selected' : '' %>>English</option>
+            <option value="ta" <%= config.language === 'ta' ? 'selected' : '' %>>Tamil (தமிழ்)</option>
+            <option value="te" <%= config.language === 'te' ? 'selected' : '' %>>Telugu (తెలుగు)</option>
+            <option value="hi" <%= config.language === 'hi' ? 'selected' : '' %>>Hindi (हिन्दी)</option>
+            <option value="ml" <%= config.language === 'ml' ? 'selected' : '' %>>Malayalam (മലയാളം)</option>
+            <option value="kn" <%= config.language === 'kn' ? 'selected' : '' %>>Kannada (ಕನ್ನಡ)</option>
+            <option value="other" <%= config.language && !['en','ta','te','hi','ml','kn'].includes(config.language) ? 'selected' : '' %>>Other Language</option>
+          </select>
+          <div id="customLangWrap" class="mt-3 <%= config.language && !['en','ta','te','hi','ml','kn'].includes(config.language) ? '' : 'hidden' %>">
+            <input type="text" id="customLangInput" name="customLanguage" form="aiConfigForm"
+              value="<%= config.language && !['en','ta','te','hi','ml','kn'].includes(config.language) ? config.language : '' %>"
+              class="ai-input" placeholder="Enter language name (e.g. French, Spanish)">
+          </div>
+          <p class="text-[10px] text-gray-400 mt-1.5">AI will respond in this language. English is the default.</p>
+        </div>
+
+        <!-- System Prompt -->
+        <div class="mb-5">
+          <label class="label-sm">System Prompt (AI Personality)</label>
+          <textarea name="systemPrompt" class="ai-input ai-textarea" rows="4"
+            placeholder="You are a helpful assistant for [Your Business Name]. Be polite, professional, and concise."><%= config.systemPrompt || '' %></textarea>
+          <p class="text-[10px] text-gray-400 mt-1.5">Defines how the AI talks to your customers</p>
+        </div>
+
+        <!-- Business Data -->
+        <div class="mb-5">
+          <label class="label-sm">Business Data (AI Context)</label>
+          <textarea name="businessData" class="ai-input ai-textarea" rows="6"
+            placeholder="Your business name:&#10;Services you offer:&#10;Pricing:&#10;Business hours:&#10;Contact info:&#10;FAQs:"><%= config.businessData || '' %></textarea>
+          <p class="text-[10px] text-gray-400 mt-1.5">The AI uses this to answer accurately about your business</p>
+        </div>
+
+        <!-- Submit -->
+        <div class="flex justify-end pt-4 border-t border-gray-100">
+          <% if (isAdmin && queueStats.failed > 0) { %>
+            <form action="/ai-config/queue/retry" method="POST" class="inline mr-3" data-no-loading>
+              <button type="submit" class="px-4 py-2.5 text-sm text-yellow-700 bg-yellow-50 rounded-xl hover:bg-yellow-100 font-medium">
+                <i class="ri-refresh-line mr-1"></i> Retry (<%= queueStats.failed %>)
+              </button>
+            </form>
+          <% } %>
+          <button type="submit" class="px-6 py-2.5 btn-pink text-white text-sm font-semibold rounded-xl flex items-center gap-2">
+            <i class="ri-save-line"></i> Save Settings
+          </button>
+        </div>
+      </div>
+    </form>
+
+    <!-- Mode Explanation -->
+    <div class="ai-section-card p-6">
+      <h3 class="font-semibold text-gray-900 mb-4 text-sm flex items-center gap-2">
+        <i class="ri-information-line text-blue-500"></i> How AI Auto-Reply Works
+      </h3>
+      <div class="grid sm:grid-cols-2 gap-3 mb-4">
+        <div class="ai-mode-card <%= config.universalAiReply ? 'active-universal' : '' %> p-4">
+          <div class="flex items-center gap-2 mb-2">
+            <i class="ri-reply-all-line text-lg <%= config.universalAiReply ? 'text-purple-600' : 'text-gray-400' %>"></i>
+            <span class="text-sm font-semibold <%= config.universalAiReply ? 'text-purple-800' : 'text-gray-600' %>">Universal Reply</span>
+          </div>
+          <p class="text-xs text-gray-500 leading-relaxed">AI responds to <strong>every</strong> incoming WhatsApp message. No keyword matching needed.</p>
+        </div>
+        <div class="ai-mode-card <%= !config.universalAiReply ? 'active-keyword' : '' %> p-4">
+          <div class="flex items-center gap-2 mb-2">
+            <i class="ri-keyboard-line text-lg <%= !config.universalAiReply ? 'text-blue-600' : 'text-gray-400' %>"></i>
+            <span class="text-sm font-semibold <%= !config.universalAiReply ? 'text-blue-800' : 'text-gray-600' %>">Keyword Only</span>
+          </div>
+          <p class="text-xs text-gray-500 leading-relaxed">AI only responds when a message matches your <a href="/auto-reply" class="text-blue-500 underline">auto-reply keyword rules</a>.</p>
+        </div>
+      </div>
+      <div class="flex items-start gap-3 p-3 rounded-xl bg-blue-50/50 border border-blue-100">
+        <i class="ri-lightbulb-line text-blue-500 mt-0.5"></i>
+        <p class="text-xs text-gray-600 leading-relaxed">Your AI uses the <strong>System Prompt</strong> (personality) + <strong>Business Data</strong> (facts) to generate accurate responses. Each response has a 45-second cooldown to protect your WhatsApp account.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Test Chat -->
+  <div class="lg:col-span-2">
+    <div class="ai-section-card p-0 overflow-hidden" style="min-height: 500px; display: flex; flex-direction: column;">
+      <!-- Chat Header -->
+      <div class="p-5 border-b border-gray-100 flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white">
+          <i class="ri-chat-smile-ai-line text-lg"></i>
+        </div>
+        <div>
+          <h3 class="font-semibold text-gray-900 text-sm">Test AI Chat</h3>
+          <p class="text-[11px] text-gray-500">See how your AI responds</p>
+        </div>
+      </div>
+
+      <!-- Chat Messages -->
+      <div id="chatHistory" class="chat-scroll flex-1 p-4 space-y-3" style="background: linear-gradient(180deg, #fafbfc 0%, #f8f9fa 100%);">
+        <% if (!config.isActive) { %>
+          <div class="flex flex-col items-center justify-center py-12 text-center">
+            <div class="w-14 h-14 rounded-full bg-yellow-100 flex items-center justify-center mb-3">
+              <i class="ri-robot-line text-2xl text-yellow-500"></i>
+            </div>
+            <p class="text-sm font-medium text-gray-700">AI is not active</p>
+            <p class="text-xs text-gray-400 mt-1 max-w-[200px]">Enable "AI Auto-Reply" in settings and save to start testing</p>
+          </div>
+        <% } else { %>
+          <!-- Welcome -->
+          <div class="flex gap-2.5">
+            <div class="w-7 h-7 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0 mt-1">
+              <i class="ri-robot-line text-purple-600 text-xs"></i>
+            </div>
+            <div class="chat-bubble-ai">
+              <p>Hi! I'm your AI assistant configured for your business. Send me a test message to see how I respond with your prompt and business data!</p>
+            </div>
+          </div>
+        <% } %>
+      </div>
+
+      <!-- Chat Input -->
+      <div class="p-4 border-t border-gray-100 bg-white">
+        <div class="flex gap-2">
+          <input type="text" id="chatInput" placeholder="Type a test message..."
+            class="flex-1 ai-input !py-3" onkeydown="if(event.key==='Enter') sendChat()"
+            <%= !config.isActive ? 'disabled' : '' %>
+            style="<%= !config.isActive ? 'opacity:0.5;cursor:not-allowed;' : '' %>">
+          <button onclick="sendChat()" id="chatSendBtn"
+            class="px-5 py-3 btn-pink text-white text-sm font-medium rounded-xl flex items-center gap-2 flex-shrink-0"
+            <%= !config.isActive ? 'disabled' : '' %>
+            style="<%= !config.isActive ? 'opacity:0.5;cursor:not-allowed;' : '' %>">
+            <span id="chatBtnText"><i class="ri-send-plane-fill"></i></span>
+            <div id="chatBtnLoader" class="hidden w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function onLanguageChange(val) {
+  var wrap = document.getElementById('customLangWrap');
+  if (val === 'other') {
+    wrap.classList.remove('hidden');
+  } else {
+    wrap.classList.add('hidden');
+  }
+}
+
+// Before form submit, if "Other" is selected, copy custom language into the select value
+(function() {
+  var form = document.getElementById('aiConfigForm');
+  if (form) {
+    form.addEventListener('submit', function(e) {
+      var select = document.getElementById('languageSelect');
+      var customInput = document.getElementById('customLangInput');
+      if (select.value === 'other' && customInput && customInput.value.trim()) {
+        // Create a hidden input with the custom language value
+        var hidden = document.createElement('input');
+        hidden.type = 'hidden';
+        hidden.name = 'language';
+        hidden.value = customInput.value.trim();
+        form.appendChild(hidden);
+      }
+    });
+  }
+})();
+
+function testOllama() {
+  var btn = document.getElementById('testOllamaBtn');
+  var result = document.getElementById('testResult');
+  var url = document.querySelector('input[name="ollamaUrl"]')?.value || 'http://localhost:11434';
+  var model = document.querySelector('input[name="model"]')?.value || 'translategemma:4b';
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ri-loader-4-line animate-spin"></i> Testing...';
+  result.classList.remove('hidden');
+  result.className = 'mb-4 p-3 rounded-xl text-xs bg-blue-50 text-blue-700';
+  result.textContent = 'Connecting to Ollama...';
+
+  fetch('/ai-config/test', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ollamaUrl: url, model: model }),
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ri-flashlight-line"></i> Test';
+    if (data.success) {
+      result.className = 'mb-4 p-3 rounded-xl text-xs bg-green-50 text-green-700';
+      result.innerHTML = '<i class="ri-check-line"></i> ' + data.message +
+        (data.preview ? '<br><strong>Preview:</strong> "' + data.preview + '..."' : '');
+    } else {
+      result.className = 'mb-4 p-3 rounded-xl text-xs bg-red-50 text-red-700';
+      result.innerHTML = '<i class="ri-error-warning-line"></i> ' + data.error +
+        (data.models ? '<br><strong>Available:</strong> ' + data.models.join(', ') : '');
+    }
+  })
+  .catch(function(err) {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ri-flashlight-line"></i> Test';
+    result.className = 'mb-4 p-4 rounded-xl text-xs bg-red-50 text-red-700';
+    result.textContent = 'Connection failed: ' + err.message;
+  });
+}
+
+function sendChat() {
+  var input = document.getElementById('chatInput');
+  var history = document.getElementById('chatHistory');
+  var btnText = document.getElementById('chatBtnText');
+  var btnLoader = document.getElementById('chatBtnLoader');
+  var message = input.value.trim();
+
+  if (!message) return;
+
+  // User message
+  var userMsg = document.createElement('div');
+  userMsg.className = 'flex gap-2.5 justify-end';
+  userMsg.innerHTML =
+    '<div class="chat-bubble-user">' + escapeHtml(message) + '</div>' +
+    '<div class="w-7 h-7 rounded-full bg-gradient-to-br from-pink-400 to-pink-600 flex items-center justify-center flex-shrink-0 mt-1">' +
+      '<i class="ri-user-line text-white text-xs"></i></div>';
+  history.appendChild(userMsg);
+
+  input.value = '';
+  btnText.innerHTML = '<i class="ri-loader-4-line animate-spin"></i>';
+  btnLoader.classList.remove('hidden');
+  history.scrollTop = history.scrollHeight;
+
+  fetch('/ai-config/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message: message }),
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    btnText.innerHTML = '<i class="ri-send-plane-fill"></i>';
+    btnLoader.classList.add('hidden');
+
+    var aiMsg = document.createElement('div');
+    aiMsg.className = 'flex gap-2.5';
+    if (data.success) {
+      aiMsg.innerHTML =
+        '<div class="w-7 h-7 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0 mt-1">' +
+          '<i class="ri-robot-line text-purple-600 text-xs"></i></div>' +
+        '<div class="chat-bubble-ai">' +
+          '<pre>' + escapeHtml(data.response) + '</pre>' +
+          '<p class="text-[10px] text-gray-400 mt-2">' + (data.model || 'AI') + ' | ' + (data.elapsedMs || '?') + 'ms</p>' +
+        '</div>';
+    } else {
+      aiMsg.innerHTML =
+        '<div class="w-7 h-7 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-1">' +
+          '<i class="ri-error-warning-line text-red-600 text-xs"></i></div>' +
+        '<div class="chat-bubble-ai" style="border-color:rgba(239,68,68,0.2);background:#fef2f2;">' +
+          '<p class="text-sm text-red-700">' + escapeHtml(data.error || 'Error') + '</p></div>';
+    }
+    history.appendChild(aiMsg);
+    history.scrollTop = history.scrollHeight;
+  })
+  .catch(function(err) {
+    btnText.innerHTML = '<i class="ri-send-plane-fill"></i>';
+    btnLoader.classList.add('hidden');
+    var errMsg = document.createElement('div');
+    errMsg.className = 'flex gap-2.5';
+    errMsg.innerHTML =
+      '<div class="w-7 h-7 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-1">' +
+        '<i class="ri-error-warning-line text-red-600 text-xs"></i></div>' +
+      '<div class="chat-bubble-ai" style="border-color:rgba(239,68,68,0.2);background:#fef2f2;">' +
+        '<p class="text-sm text-red-700">Network error: ' + escapeHtml(err.message) + '</p></div>';
+    history.appendChild(errMsg);
+    history.scrollTop = history.scrollHeight;
+  });
+}
+
+function escapeHtml(text) {
+  var div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+</script>

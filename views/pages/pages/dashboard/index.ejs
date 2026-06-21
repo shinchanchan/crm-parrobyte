@@ -1,0 +1,243 @@
+<% 
+const statCards = [
+  { label: 'Total Sessions', value: stats.totalSessions, icon: 'ri-qr-code-line', color: 'bg-blue-100 text-blue-600', sub: `${stats.activeSessions} active` },
+  { label: 'Total Contacts', value: stats.totalContacts, icon: 'ri-contacts-line', color: 'bg-green-100 text-green-600', sub: 'across all groups' },
+  { label: 'Templates', value: stats.totalTemplates, icon: 'ri-file-list-line', color: 'bg-purple-100 text-purple-600', sub: 'ready to use' },
+  { label: 'Messages Sent', value: stats.sentMessages, icon: 'ri-send-plane-line', color: 'bg-pink-100 text-pink-600', sub: `${stats.failedMessages} failed` },
+];
+%>
+
+<!-- Stats Grid -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+  <% statCards.forEach(card => { %>
+    <div class="bg-white rounded-2xl p-6 border border-pink-100 card-hover">
+      <div class="flex items-start justify-between mb-4">
+        <div class="w-12 h-12 rounded-xl <%= card.color %> flex items-center justify-center">
+          <i class="<%= card.icon %> text-xl"></i>
+        </div>
+        <span class="text-xs font-medium text-gray-400 bg-gray-50 px-2 py-1 rounded-full">Total</span>
+      </div>
+      <h3 class="text-2xl font-bold text-gray-900"><%= card.value %></h3>
+      <p class="text-xs text-gray-500 mt-1"><%= card.sub %></p>
+    </div>
+  <% }); %>
+</div>
+
+<!-- Shared Session Banner -->
+<% if (sharedSession) { %>
+  <div class="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl border border-purple-200 p-5 mb-8">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-4">
+        <div class="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center">
+          <i class="ri-share-forward-line text-purple-600 text-xl"></i>
+        </div>
+        <div>
+          <h3 class="font-semibold text-gray-900 text-sm">
+            <%= isAdmin ? 'Shared WhatsApp Session' : 'Connected via Admin Session' %>
+          </h3>
+          <p class="text-xs text-gray-500">
+            <span class="inline-flex items-center gap-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+              <span class="font-medium text-gray-700"><%= sharedSession.sessionName %></span>
+              <span class="text-gray-400">|</span>
+              <span><%= sharedSession.phoneNumber || 'No phone' %></span>
+            </span>
+          </p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="text-xs font-medium px-3 py-1.5 rounded-full bg-green-100 text-green-700">
+          <i class="ri-check-line mr-1"></i> Active
+        </span>
+        <% if (isAdmin) { %>
+          <a href="/sessions" class="text-xs font-medium px-3 py-1.5 rounded-full bg-purple-100 text-purple-700 hover:bg-purple-200 transition-colors">
+            <i class="ri-settings-line mr-1"></i> Manage
+          </a>
+        <% } %>
+      </div>
+    </div>
+  </div>
+<% } else if (isAdmin) { %>
+  <div class="bg-amber-50 rounded-2xl border border-amber-200 p-5 mb-8">
+    <div class="flex items-center gap-4">
+      <div class="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center">
+        <i class="ri-alert-line text-amber-600 text-xl"></i>
+      </div>
+      <div class="flex-1">
+        <h3 class="font-semibold text-gray-900 text-sm">No Shared Session Configured</h3>
+        <p class="text-xs text-gray-500">Regular users need a shared session to send messages. Go to WhatsApp Sessions and click the share button on a connected session.</p>
+      </div>
+      <a href="/sessions" class="text-xs font-medium px-4 py-2 rounded-full bg-amber-100 text-amber-700 hover:bg-amber-200 transition-colors">
+        <i class="ri-qr-code-line mr-1"></i> Configure
+      </a>
+    </div>
+  </div>
+<% } else { %>
+  <div class="bg-red-50 rounded-2xl border border-red-200 p-5 mb-8">
+    <div class="flex items-center gap-4">
+      <div class="w-12 h-12 rounded-xl bg-red-100 flex items-center justify-center">
+        <i class="ri-error-warning-line text-red-600 text-xl"></i>
+      </div>
+      <div>
+        <h3 class="font-semibold text-gray-900 text-sm">No Shared Session Available</h3>
+        <p class="text-xs text-gray-500">Your admin hasn't configured a shared WhatsApp session yet. Please contact them.</p>
+      </div>
+    </div>
+  </div>
+<% } %>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <!-- Active Sessions -->
+  <div class="lg:col-span-2 bg-white rounded-2xl border border-pink-100">
+    <div class="p-6 border-b border-pink-100 flex items-center justify-between">
+      <div>
+        <h3 class="font-semibold text-gray-900">WhatsApp Sessions</h3>
+        <p class="text-xs text-gray-500"><%= isAdmin ? 'All connected WhatsApp accounts' : 'Your connected WhatsApp accounts' %></p>
+      </div>
+      <% if (isAdmin) { %>
+        <a href="/sessions" class="text-sm text-pink-600 hover:underline flex items-center gap-1"><i class="ri-external-link-line"></i> Manage</a>
+      <% } %>
+    </div>
+    <div class="p-6">
+      <% if (sessions && sessions.length > 0) { %>
+        <div class="space-y-3">
+          <% sessions.forEach(s => { %>
+            <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
+              <div class="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+                <i class="ri-whatsapp-line text-green-600 text-lg"></i>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="font-medium text-gray-900 text-sm truncate"><%= s.sessionName %></p>
+                <p class="text-xs text-gray-500"><%= s.phoneNumber || 'Not connected' %></p>
+              </div>
+              <span class="status-dot status-<%= s.status %>" title="<%= s.status %>"></span>
+            </div>
+          <% }); %>
+        </div>
+      <% } else { %>
+        <div class="text-center py-8">
+          <div class="w-16 h-16 rounded-full bg-pink-50 flex items-center justify-center mx-auto mb-3">
+            <i class="ri-qr-code-line text-2xl text-pink-300"></i>
+          </div>
+          <p class="text-sm text-gray-500">No sessions yet</p>
+          <a href="/sessions" class="text-sm text-pink-600 hover:underline mt-1 inline-block">Create your first session</a>
+        </div>
+      <% } %>
+    </div>
+  </div>
+
+  <!-- Credits Info -->
+  <div class="bg-white rounded-2xl border border-pink-100">
+    <div class="p-6 border-b border-pink-100">
+      <h3 class="font-semibold text-gray-900">Your Credits</h3>
+      <p class="text-xs text-gray-500">Pay-as-you-go billing</p>
+    </div>
+    <div class="p-6">
+      <div class="text-center mb-6">
+        <div class="w-16 h-16 rounded-full bg-gradient-to-br from-pink-400 to-pink-600 flex items-center justify-center mx-auto mb-3 shadow-lg">
+          <i class="ri-coins-line text-2xl text-white"></i>
+        </div>
+        <h4 class="text-3xl font-extrabold text-gray-900">₹<%= parseFloat(creditBalance).toFixed(2) %></h4>
+        <p class="text-xs text-gray-500 mt-1">Available Credits</p>
+      </div>
+      <div class="space-y-3">
+        <% const dashSvcIcons = {
+          'send_message': 'ri-send-plane-line', 'incoming_message': 'ri-message-3-line', 'ai_reply': 'ri-brain-line',
+          'create_contact': 'ri-contacts-line', 'create_template': 'ri-file-list-line', 'scrape': 'ri-map-pin-line',
+          'schedule_message': 'ri-calendar-schedule-line', 'auto_reply': 'ri-robot-line', 'create_session': 'ri-qr-code-line',
+          'social_automation': 'ri-messenger-line', 'api_key': 'ri-key-line', 'webhook': 'ri-webhook-line', 'poll_results': 'ri-bar-chart-box-line',
+          'create_form': 'ri-survey-line', 'lead_import': 'ri-user-search-line', 'youtube_rule': 'ri-youtube-line',
+          'instagram_rule': 'ri-instagram-line'
+        }; %>
+        <% if (typeof creditConfigs !== 'undefined' && creditConfigs.length > 0) { %>
+          <% creditConfigs.slice(0, 6).forEach(c => { %>
+            <div class="flex justify-between text-sm items-center">
+              <span class="text-gray-500 flex items-center gap-1.5">
+                <i class="<%= dashSvcIcons[c.serviceKey] || 'ri-apps-line' %> text-pink-400 text-xs"></i>
+                <%= c.serviceName %>
+              </span>
+              <span class="font-medium text-gray-900">₹<%= parseFloat(c.cost).toFixed(2) %></span>
+            </div>
+          <% }); %>
+        <% } else { %>
+          <div class="flex justify-between text-sm items-center">
+            <span class="text-gray-500 flex items-center gap-1.5"><i class="ri-send-plane-line text-pink-400 text-xs"></i> Send Message</span>
+            <span class="font-medium text-gray-900">₹0.10</span>
+          </div>
+          <div class="flex justify-between text-sm items-center">
+            <span class="text-gray-500 flex items-center gap-1.5"><i class="ri-brain-line text-pink-400 text-xs"></i> AI Reply</span>
+            <span class="font-medium text-gray-900">₹0.25</span>
+          </div>
+          <div class="flex justify-between text-sm items-center">
+            <span class="text-gray-500 flex items-center gap-1.5"><i class="ri-contacts-line text-pink-400 text-xs"></i> Create Contact</span>
+            <span class="font-medium text-gray-900">₹0.50</span>
+          </div>
+          <div class="flex justify-between text-sm items-center">
+            <span class="text-gray-500 flex items-center gap-1.5"><i class="ri-file-list-line text-pink-400 text-xs"></i> Create Template</span>
+            <span class="font-medium text-gray-900">₹1.00</span>
+          </div>
+          <div class="flex justify-between text-sm items-center">
+            <span class="text-gray-500 flex items-center gap-1.5"><i class="ri-map-pin-line text-pink-400 text-xs"></i> Scraper</span>
+            <span class="font-medium text-gray-900">₹2.00</span>
+          </div>
+        <% } %>
+      </div>
+      <a href="/billing" class="mt-6 block w-full py-2.5 text-center text-sm font-medium text-pink-600 border border-pink-200 rounded-xl hover:bg-pink-50 transition-colors">
+        Top Up Credits
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- Recent Activity -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+  <div class="bg-white rounded-2xl border border-pink-100">
+    <div class="p-6 border-b border-pink-100">
+      <h3 class="font-semibold text-gray-900">Recent Messages</h3>
+    </div>
+    <div class="p-6">
+      <% if (recentMessages && recentMessages.length > 0) { %>
+        <div class="space-y-3">
+          <% recentMessages.slice(0, 5).forEach(m => { %>
+            <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+              <div class="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
+                <i class="ri-message-3-line text-pink-600"></i>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-gray-900 truncate"><%= m.phone %></p>
+                <p class="text-xs text-gray-500 truncate"><%= m.content %></p>
+              </div>
+              <span class="text-xs px-2 py-1 rounded-full <%= m.status === 'sent' ? 'bg-green-100 text-green-600' : m.status === 'failed' ? 'bg-red-100 text-red-600' : 'bg-yellow-100 text-yellow-600' %>"><%= m.status %></span>
+            </div>
+          <% }); %>
+        </div>
+      <% } else { %>
+        <p class="text-sm text-gray-500 text-center py-4">No messages yet</p>
+      <% } %>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-2xl border border-pink-100">
+    <div class="p-6 border-b border-pink-100">
+      <h3 class="font-semibold text-gray-900">Recent Contacts</h3>
+    </div>
+    <div class="p-6">
+      <% if (recentContacts && recentContacts.length > 0) { %>
+        <div class="space-y-3">
+          <% recentContacts.slice(0, 5).forEach(c => { %>
+            <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+              <div class="w-8 h-8 rounded-full bg-gradient-to-br from-pink-400 to-pink-600 flex items-center justify-center text-white text-sm font-bold"><%= c.name.charAt(0).toUpperCase() %></div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-gray-900 truncate"><%= c.name %></p>
+                <p class="text-xs text-gray-500"><%= c.phone %></p>
+              </div>
+              <span class="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded-full"><%= c.group %></span>
+            </div>
+          <% }); %>
+        </div>
+      <% } else { %>
+        <p class="text-sm text-gray-500 text-center py-4">No contacts yet</p>
+      <% } %>
+    </div>
+  </div>
+</div>

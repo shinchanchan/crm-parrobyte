@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="<%= themeColor %>">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="ParroByte">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <!-- Mobile Performance -->
+  <meta name="format-detection" content="telephone=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title><%= title %></title>
+  <meta name="description" content="<%= typeof metaDescription !== 'undefined' && metaDescription ? metaDescription : 'ParroByte CRM — All-in-one WhatsApp automation, lead management, enquiry forms, business scraper, email automation, and social media tools for growing businesses.' %>">
+  <meta name="keywords" content="<%= typeof metaKeywords !== 'undefined' && metaKeywords ? metaKeywords : 'WhatsApp CRM, WhatsApp automation, lead management, enquiry forms, business scraper, email automation, bulk messaging, ParroByte' %>">
+  <meta name="author" content="ParroByte CRM">
+  <meta name="robots" content="<%= typeof metaRobots !== 'undefined' && metaRobots ? metaRobots : 'index, follow' %>">
+  <link rel="canonical" href="<%= typeof canonicalUrl !== 'undefined' && canonicalUrl ? canonicalUrl : (typeof baseUrl !== 'undefined' ? baseUrl : '') + (typeof path !== 'undefined' ? path : '') %>">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="shortcut icon" href="/favicon.svg">
+  <!-- Open Graph -->
+  <meta property="og:title" content="<%= typeof ogTitle !== 'undefined' && ogTitle ? ogTitle : title %>">
+  <meta property="og:description" content="<%= typeof ogDescription !== 'undefined' && ogDescription ? ogDescription : (typeof metaDescription !== 'undefined' && metaDescription ? metaDescription : 'ParroByte CRM — All-in-one WhatsApp automation and lead management.') %>">
+  <meta property="og:type" content="<%= typeof ogType !== 'undefined' && ogType ? ogType : 'website' %>">
+  <meta property="og:url" content="<%= typeof ogUrl !== 'undefined' && ogUrl ? ogUrl : (typeof baseUrl !== 'undefined' ? baseUrl : '') + (typeof path !== 'undefined' ? path : '') %>">
+  <meta property="og:image" content="<%= typeof ogImage !== 'undefined' && ogImage ? ogImage : (typeof baseUrl !== 'undefined' ? baseUrl : '') + '/favicon.svg' %>">
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="<%= typeof ogTitle !== 'undefined' && ogTitle ? ogTitle : title %>">
+  <meta name="twitter:description" content="<%= typeof ogDescription !== 'undefined' && ogDescription ? ogDescription : (typeof metaDescription !== 'undefined' && metaDescription ? metaDescription : 'ParroByte CRM — All-in-one WhatsApp automation and lead management.') %>">
+  <meta name="twitter:image" content="<%= typeof ogImage !== 'undefined' && ogImage ? ogImage : (typeof baseUrl !== 'undefined' ? baseUrl : '') + '/favicon.svg' %>">
+  <link rel="stylesheet" href="/css/app.css">
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.1.0/fonts/remixicon.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --theme-color: <%= themeColor %>;
+      --theme-rgb: <%= (parseInt(themeColor.slice(1,3),16)||236) %>, <%= (parseInt(themeColor.slice(3,5),16)||72) %>, <%= (parseInt(themeColor.slice(5,7),16)||153) %>;
+    }
+    body { font-family: 'Inter', sans-serif; touch-action: pan-x pan-y pinch-zoom; }
+    /* Allow pinch-zoom everywhere, including over overlays */
+    #globalLoadingOverlay { touch-action: pan-x pan-y pinch-zoom; pointer-events: none; }
+    #globalLoadingOverlay > * { pointer-events: auto; }
+    .gradient-bg { background: linear-gradient(135deg, #fdf2f8 0%, #fce7f3 50%, #fbcfe8 100%); }
+    .pink-glow { box-shadow: 0 0 20px rgba(var(--theme-rgb), 0.15); }
+    .sidebar-link { transition: all 0.3s ease; }
+    .sidebar-link:hover, .sidebar-link.active { background: linear-gradient(90deg, #fce7f3 0%, #fdf2f8 100%); border-right: 3px solid var(--theme-color); }
+    .card-hover { transition: all 0.3s ease; }
+    .card-hover:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(var(--theme-rgb), 0.12); }
+    .btn-pink { background: var(--theme-color); color: #fff; }
+    .btn-pink:hover { filter: brightness(0.9); }
+    .loading-spinner { border: 3px solid #fce7f3; border-top: 3px solid var(--theme-color); border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .qr-container { background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+    .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .status-connected { background: #10b981; box-shadow: 0 0 8px rgba(16, 185, 129, 0.4); }
+    .status-disconnected { background: #ef4444; }
+    .status-connecting { background: #f59e0b; animation: pulse 1.5s infinite; }
+    .status-qr_ready { background: #3b82f6; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    .mobile-menu { transform: translateX(-100%); transition: transform 0.3s ease; }
+    .mobile-menu.open { transform: translateX(0); }
+    .media-preview { max-width: 200px; max-height: 150px; border-radius: 8px; object-fit: cover; }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #fce7f3; }
+    ::-webkit-scrollbar-thumb { background: #ec4899; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #db2777; }
+    * { scrollbar-width: thin; scrollbar-color: #ec4899 #fce7f3; }
+    .plan-badge-free { background: #f3f4f6; color: #6b7280; }
+    .plan-badge-silver { background: #e5e7eb; color: #374151; }
+    .plan-badge-gold { background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); color: white; }
+    .plan-badge-platinum { background: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%); color: white; }
+    /* Gold plan highlight */
+    .gold-highlight {
+      background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 50%, #fde68a 100%);
+      position: relative;
+      overflow: hidden;
+    }
+    .gold-highlight::before {
+      content: '';
+      position: absolute;
+      top: -50%; left: -50%;
+      width: 200%; height: 200%;
+      background: conic-gradient(from 0deg, transparent, rgba(251, 191, 36, 0.08), transparent 30%);
+      animation: rotate 10s linear infinite;
+      pointer-events: none;
+    }
+    @keyframes rotate { 100% { transform: rotate(360deg); } }
+
+    /* === MOBILE PERFORMANCE: prevent slow zoom / double-tap delays === */
+    * { -webkit-tap-highlight-color: transparent; }
+    button, a, input, select, textarea, [role="button"] {
+      touch-action: manipulation;
+    }
+
+    /* === RESPONSIVE TABLES: horizontal scroll on mobile === */
+    .table-responsive {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+      scrollbar-color: #ec4899 #fce7f3;
+    }
+    .table-responsive::-webkit-scrollbar { height: 6px; }
+    .table-responsive::-webkit-scrollbar-track { background: #fce7f3; }
+    .table-responsive::-webkit-scrollbar-thumb { background: #ec4899; border-radius: 3px; }
+    .table-responsive::-webkit-scrollbar-thumb:hover { background: #db2777; }
+    .table-responsive table { min-width: 640px; }
+
+    /* === REDUCE MOTION for users who prefer it === */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    /* === PWA STANDALONE MODE === */
+    @media (display-mode: standalone) {
+      body { padding-top: env(safe-area-inset-top); }
+      .fixed.top-0 { top: env(safe-area-inset-top); }
+    }
+
+    /* === MOBILE LAYOUT FIXES === */
+    @media (max-width: 640px) {
+      .card-hover:hover { transform: none; }
+      .gold-highlight::before { animation: none; }
+      /* Disable heavy hover effects on touch devices */
+      .sidebar-link:hover, .sidebar-link.active {
+        background: #fce7f3;
+        border-right: 3px solid var(--theme-color);
+      }
+      /* Prevent text size adjustment on orientation change */
+      html { -webkit-text-size-adjust: 100%; }
+    }
+
+    /* === NOTCH / SAFE AREA === */
+    @supports (padding: max(0px)) {
+      .safe-area-top { padding-top: max(12px, env(safe-area-inset-top)); }
+      .safe-area-bottom { padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+      .safe-area-left { padding-left: max(12px, env(safe-area-inset-left)); }
+      .safe-area-right { padding-right: max(12px, env(safe-area-inset-right)); }
+    }
+  </style>
+  <!-- Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then((reg) => console.log('[PWA] SW registered'))
+          .catch((err) => console.log('[PWA] SW registration failed', err));
+      });
+    }
+  </script>
+</head>
+<body class="bg-base-200 min-h-screen">
+  <% if (typeof user !== 'undefined' && user) { %>
+    <div class="flex min-h-screen">
+      <%- include('partials/sidebar') %>
+      <div class="flex-1 lg:ml-64">
+        <%- include('partials/header') %>
+        <main class="p-4 lg:p-8">
+          <%- include('partials/flash') %>
+          <% if (typeof activeSubscription !== 'undefined' && activeSubscription) { %>
+            <!-- User has active subscription — show subscription badge instead of credit warnings -->
+            <div class="mb-4 bg-green-50 border border-green-200 rounded-xl p-4 flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <i class="ri-vip-crown-line text-green-500 text-xl"></i>
+                <div>
+                  <p class="text-sm font-medium text-green-700"><%= activeSubscription.plan.displayName %> is active</p>
+                  <p class="text-xs text-green-600">Unlimited usage until <%= new Date(activeSubscription.subscription.expiresAt).toLocaleDateString('en-IN') %>. Credits used only for non-included services.</p>
+                </div>
+              </div>
+              <a href="/billing" class="px-4 py-2 bg-green-600 text-white text-xs font-semibold rounded-lg hover:bg-green-700 transition-colors">Manage</a>
+            </div>
+          <% } else if (typeof creditBalance !== 'undefined' && creditBalance < 10) { %>
+            <div class="mb-4 bg-red-50 border border-red-200 rounded-xl p-4 flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <i class="ri-error-warning-line text-red-500 text-xl"></i>
+                <div>
+                  <p class="text-sm font-medium text-red-700">Low credit balance: ₹<%= parseFloat(creditBalance).toFixed(2) %> remaining</p>
+                  <p class="text-xs text-red-600">Top up now or subscribe to a monthly plan for unlimited usage.</p>
+                </div>
+              </div>
+              <a href="/billing" class="px-4 py-2 bg-red-600 text-white text-xs font-semibold rounded-lg hover:bg-red-700 transition-colors">Top Up</a>
+            </div>
+          <% } else if (typeof creditBalance !== 'undefined' && creditBalance < 30) { %>
+            <div class="mb-4 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <i class="ri-time-line text-amber-500 text-xl"></i>
+                <div>
+                  <p class="text-sm font-medium text-amber-700">Running low: ₹<%= parseFloat(creditBalance).toFixed(2) %> remaining</p>
+                  <p class="text-xs text-amber-600">Consider topping up or subscribing to a monthly plan.</p>
+                </div>
+              </div>
+              <a href="/billing" class="px-4 py-2 bg-amber-500 text-white text-xs font-semibold rounded-lg hover:bg-amber-600 transition-colors">Top Up</a>
+            </div>
+          <% } %>
+          <%- body %>
+        </main>
+        <%- include('partials/footer') %>
+      </div>
+    </div>
+  <% } else { %>
+    <%- body %>
+  <% } %>
+  <!-- Offline / No Internet Indicator -->
+  <div id="offlineBanner" class="fixed top-0 left-0 right-0 z-[10000] bg-red-600 text-white text-center py-2 px-4 hidden safe-area-top" style="transition: transform 0.3s ease;">
+    <div class="flex items-center justify-center gap-2 text-sm font-medium">
+      <i class="ri-wifi-off-line text-lg"></i>
+      <span>No internet connection. Please check your network.</span>
+    </div>
+  </div>
+
+  <!-- Global Loading Overlay -->
+  <div id="globalLoadingOverlay" class="fixed inset-0 bg-white/80 backdrop-blur-sm z-[9999] hidden flex flex-col items-center justify-center">
+    <div class="loading-spinner w-12 h-12 border-4"></div>
+    <p class="mt-4 text-sm font-medium text-gray-600" id="globalLoadingText">Processing... Please wait</p>
+    <p class="mt-1 text-xs text-gray-400">Do not close or refresh this page</p>
+  </div>
+
+  <script>
+    // Mobile menu toggle
+    function toggleMobileMenu() {
+      const menu = document.getElementById('mobile-sidebar');
+      menu.classList.toggle('open');
+    }
+    
+    // Close mobile menu when clicking outside
+    document.addEventListener('click', function(e) {
+      const menu = document.getElementById('mobile-sidebar');
+      const toggle = document.getElementById('menu-toggle');
+      if (menu && menu.classList.contains('open') && !menu.contains(e.target) && !toggle.contains(e.target)) {
+        menu.classList.remove('open');
+      }
+    });
+
+    // ===== AUTO-WRAP TABLES for mobile scroll =====
+    document.addEventListener('DOMContentLoaded', function() {
+      document.querySelectorAll('table').forEach(function(table) {
+        if (table.closest('.table-responsive')) return;
+        const wrapper = document.createElement('div');
+        wrapper.className = 'table-responsive';
+        table.parentNode.insertBefore(wrapper, table);
+        wrapper.appendChild(table);
+      });
+    });
+
+    // ===== PWA Install Prompt =====
+    let deferredInstallPrompt = null;
+    window.addEventListener('beforeinstallprompt', function(e) {
+      e.preventDefault();
+      deferredInstallPrompt = e;
+      // Show install buttons in sidebar
+      const btn = document.getElementById('pwaInstallBtn');
+      const btnMobile = document.getElementById('pwaInstallBtnMobile');
+      if (btn) btn.classList.remove('hidden');
+      if (btnMobile) btnMobile.classList.remove('hidden');
+    });
+
+    function installPWA() {
+      if (!deferredInstallPrompt) {
+        alert('Installation is not supported on this browser. Please use Chrome, Edge, or Safari.');
+        return;
+      }
+      deferredInstallPrompt.prompt();
+      deferredInstallPrompt.userChoice.then((choice) => {
+        if (choice.outcome === 'accepted') {
+          console.log('[PWA] User accepted install');
+          // Hide install buttons after install
+          const btn = document.getElementById('pwaInstallBtn');
+          const btnMobile = document.getElementById('pwaInstallBtnMobile');
+          if (btn) btn.classList.add('hidden');
+          if (btnMobile) btnMobile.classList.add('hidden');
+        } else {
+          console.log('[PWA] User dismissed install');
+        }
+        deferredInstallPrompt = null;
+      });
+    }
+
+    // ===== ONLINE / OFFLINE INDICATOR =====
+    (function() {
+      const banner = document.getElementById('offlineBanner');
+      if (!banner) return;
+
+      function updateOnlineStatus() {
+        if (navigator.onLine) {
+          banner.classList.add('hidden');
+          banner.style.transform = 'translateY(-100%)';
+        } else {
+          banner.classList.remove('hidden');
+          banner.style.transform = 'translateY(0)';
+        }
+      }
+
+      window.addEventListener('online', updateOnlineStatus);
+      window.addEventListener('offline', updateOnlineStatus);
+      updateOnlineStatus(); // Check initial state
+    })();
+
+
+
+    // ===== GLOBAL LOADING STATE =====
+    // Shows overlay on ALL form submissions, disables buttons, prevents double-click
+    document.addEventListener('DOMContentLoaded', function() {
+      const overlay = document.getElementById('globalLoadingOverlay');
+      const loadingText = document.getElementById('globalLoadingText');
+
+      // Intercept all form submissions
+      document.querySelectorAll('form').forEach(function(form) {
+        form.addEventListener('submit', function(e) {
+          // Don't block if form has data-no-loading attribute
+          if (form.hasAttribute('data-no-loading')) return;
+          // Don't block native dialog backdrop forms (click outside to close modal)
+          if (form.getAttribute('method') === 'dialog') return;
+
+          // Show overlay
+          overlay.classList.remove('hidden');
+
+          // Set custom message if data-loading-text exists
+          const msg = form.getAttribute('data-loading-text');
+          if (msg) loadingText.textContent = msg;
+          else loadingText.textContent = 'Processing... Please wait';
+
+          // Disable ALL buttons on the page
+          document.querySelectorAll('button, a[href]').forEach(function(el) {
+            el.dataset.originalDisabled = el.disabled;
+            el.disabled = true;
+            el.style.opacity = '0.5';
+            el.style.pointerEvents = 'none';
+          });
+
+          // Re-enable the current submit button visually (it's already being clicked)
+          const submitBtn = form.querySelector('button[type="submit"]');
+          if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.style.opacity = '0.7';
+          }
+        });
+      });
+
+      // Also intercept links with data-loading attribute
+      document.querySelectorAll('a[data-loading]').forEach(function(link) {
+        link.addEventListener('click', function() {
+          overlay.classList.remove('hidden');
+          const msg = link.getAttribute('data-loading-text') || 'Loading...';
+          loadingText.textContent = msg;
+        });
+      });
+    });
+
+    function showLoading(text) {
+      const overlay = document.getElementById('globalLoadingOverlay');
+      const loadingText = document.getElementById('globalLoadingText');
+      overlay.classList.remove('hidden');
+      loadingText.textContent = text || 'Processing... Please wait';
+    }
+    function hideLoading() {
+      document.getElementById('globalLoadingOverlay').classList.add('hidden');
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,633 @@
+<div class="mb-6">
+  <h2 class="text-xl font-bold text-gray-900">Instagram Automation</h2>
+  <p class="text-sm text-gray-500">Auto-reply to Instagram comments and DMs based on keywords</p>
+</div>
+
+<% if (!oauthConfigured) { %>
+  <div class="bg-amber-50 border border-amber-200 rounded-2xl p-6 mb-6">
+    <div class="flex items-center gap-3">
+      <i class="ri-error-warning-line text-amber-500 text-2xl"></i>
+      <div>
+        <p class="text-sm font-medium text-amber-700">Facebook App Not Configured</p>
+        <p class="text-xs text-amber-600">Please set FACEBOOK_APP_ID and FACEBOOK_APP_SECRET in your .env file.</p>
+      </div>
+    </div>
+  </div>
+<% } %>
+
+<!-- Connection Status -->
+<div class="bg-white rounded-2xl border border-pink-100 p-6 mb-6">
+  <div class="flex items-center justify-between flex-wrap gap-4">
+    <div class="flex items-center gap-4">
+      <div class="w-14 h-14 rounded-2xl <%= connection && connection.isActive ? 'bg-gradient-to-br from-purple-500 to-pink-500' : 'bg-gray-100' %> flex items-center justify-center">
+        <i class="ri-instagram-line text-3xl <%= connection && connection.isActive ? 'text-white' : 'text-gray-400' %>"></i>
+      </div>
+      <div>
+        <h3 class="font-semibold text-gray-900">
+          <%= connection && connection.isActive ? ('@' + connection.instagramUsername) : 'Not Connected' %>
+        </h3>
+        <p class="text-sm text-gray-500">
+          <% if (connection && connection.isActive) { %>
+            Page: <%= connection.pageName || 'N/A' %> &bull; Last fetch: <%= connection.lastFetchAt ? new Date(connection.lastFetchAt).toLocaleString() : 'Never' %>
+          <% } else { %>
+            Connect your Instagram Business Account to start auto-replying
+          <% } %>
+        </p>
+      </div>
+    </div>
+    <div class="flex gap-2">
+      <% if (connection && connection.isActive) { %>
+        <button onclick="testConnection()" class="px-4 py-2.5 bg-white border border-blue-200 text-blue-600 text-sm font-medium rounded-xl hover:bg-blue-50 transition-colors flex items-center gap-2">
+          <i class="ri-test-tube-line"></i> Test Connection
+        </button>
+        <form action="/instagram/process-now" method="POST" class="inline">
+          <button type="submit" class="px-4 py-2.5 bg-white border border-pink-200 text-pink-600 text-sm font-medium rounded-xl hover:bg-pink-50 transition-colors flex items-center gap-2">
+            <i class="ri-refresh-line"></i> Process Now
+          </button>
+        </form>
+        <form action="/instagram/disconnect" method="POST" class="inline" onsubmit="return confirm('Disconnect Instagram?')">
+          <button type="submit" class="px-4 py-2.5 bg-gray-100 text-gray-600 text-sm font-medium rounded-xl hover:bg-gray-200 transition-colors flex items-center gap-2">
+            <i class="ri-disconnect-line"></i> Disconnect
+          </button>
+        </form>
+      <% } else { %>
+        <a href="/instagram/oauth/start" class="px-5 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-medium rounded-xl hover:shadow-lg transition-all flex items-center gap-2">
+          <i class="ri-instagram-line"></i> Connect Instagram
+        </a>
+      <% } %>
+    </div>
+  </div>
+
+  <!-- Test Results -->
+  <div id="testResults" class="hidden mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
+    <div class="flex items-center gap-2 mb-2">
+      <div class="loading-spinner w-4 h-4 border-2 border-pink-500 border-t-transparent rounded-full animate-spin" id="testLoader"></div>
+      <span class="text-sm text-gray-600" id="testStatus">Testing connection...</span>
+    </div>
+    <div id="testContent"></div>
+  </div>
+</div>
+
+<!-- Last Process Result -->
+<% if (typeof processResult !== 'undefined' && processResult) { %>
+<div class="bg-white rounded-2xl border border-pink-100 overflow-hidden mb-6">
+  <div class="p-5 border-b border-pink-100 flex items-center justify-between">
+    <h3 class="font-semibold text-gray-900">Last Run Log</h3>
+    <span class="text-xs text-gray-500">Processed: <%= processResult.processed %>, Replied: <%= processResult.replies %></span>
+  </div>
+  <div class="p-4 max-h-96 overflow-y-auto">
+    <% if (processResult.logs && processResult.logs.length > 0) { %>
+      <div class="space-y-1">
+        <% processResult.logs.forEach(log => { %>
+          <div class="text-xs px-3 py-1.5 rounded-lg
+            <%= log.type === 'success' ? 'bg-green-50 text-green-700' : '' %>
+            <%= log.type === 'error' ? 'bg-red-50 text-red-700' : '' %>
+            <%= log.type === 'match' ? 'bg-blue-50 text-blue-700' : '' %>
+            <%= log.type === 'skip' ? 'bg-gray-50 text-gray-500' : '' %>
+            <%= log.type === 'info' ? 'bg-indigo-50 text-indigo-700 font-medium' : '' %>
+          ">
+            <span class="uppercase text-[10px] font-bold tracking-wider mr-2 opacity-70"><%= log.type %></span>
+            <%= log.message %>
+          </div>
+        <% }); %>
+      </div>
+    <% } else { %>
+      <p class="text-sm text-gray-400 text-center py-4">No logs from last run.</p>
+    <% } %>
+  </div>
+</div>
+<% } %>
+
+<!-- Test Rules Section -->
+<% if (rules.length > 0) { %>
+<div class="bg-white rounded-2xl border border-pink-100 overflow-hidden mb-6">
+  <div class="p-5 border-b border-pink-100">
+    <h3 class="font-semibold text-gray-900">Test Your Rules</h3>
+    <p class="text-xs text-gray-500 mt-1">Type a sample comment to see which rules would match</p>
+  </div>
+  <div class="p-5">
+    <div class="flex gap-3">
+      <input type="text" id="testSampleText" placeholder="e.g. I want a website for my business"
+        class="flex-1 px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm">
+      <button onclick="testRules()" class="px-5 py-2 btn-pink text-white text-sm font-medium rounded-xl hover:shadow-lg transition-all">
+        <i class="ri-flask-line mr-1"></i> Test
+      </button>
+    </div>
+    <div id="testRuleResults" class="hidden mt-3"></div>
+  </div>
+</div>
+<% } %>
+
+<!-- Debug Comments Section -->
+<% if (connection && connection.isActive) { %>
+<div class="bg-white rounded-2xl border border-pink-100 overflow-hidden mb-6">
+  <div class="p-5 border-b border-pink-100">
+    <h3 class="font-semibold text-gray-900">Debug Comments</h3>
+    <p class="text-xs text-gray-500 mt-1">Fetch raw comments from a post to see what text the system sees</p>
+  </div>
+  <div class="p-5">
+    <div class="flex gap-3">
+      <input type="text" id="debugMediaId" placeholder="Enter Instagram Media ID"
+        class="flex-1 px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm">
+      <button onclick="debugComments()" class="px-5 py-2 bg-white border border-blue-200 text-blue-600 text-sm font-medium rounded-xl hover:bg-blue-50 transition-all">
+        <i class="ri-bug-line mr-1"></i> Fetch Comments
+      </button>
+    </div>
+    <div id="debugCommentsResults" class="hidden mt-4"></div>
+  </div>
+</div>
+<% } %>
+
+<!-- Recent Posts (if connected) -->
+<% if (connection && connection.isActive) { %>
+<div class="bg-white rounded-2xl border border-pink-100 overflow-hidden mb-6">
+  <div class="p-5 border-b border-pink-100 flex items-center justify-between">
+    <h3 class="font-semibold text-gray-900">Recent Posts</h3>
+    <span class="text-xs text-gray-500">Fetched from your account</span>
+  </div>
+  <div class="p-4">
+    <div id="mediaGrid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+      <p class="text-sm text-gray-400 col-span-full text-center py-4">Click "Test Connection" to load your posts</p>
+    </div>
+  </div>
+</div>
+<% } %>
+
+<!-- DM Conversations (if connected) -->
+<% if (connection && connection.isActive) { %>
+<div class="bg-white rounded-2xl border border-pink-100 overflow-hidden mb-6">
+  <div class="p-5 border-b border-pink-100 flex items-center justify-between">
+    <h3 class="font-semibold text-gray-900">DM Conversations</h3>
+    <span class="text-xs text-gray-500"><%= dmConversations.length %> conversation(s)</span>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-gray-50 border-b border-pink-100">
+        <tr>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">User</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Last Message</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Unread</th>
+          <th class="text-right px-6 py-3 font-medium text-gray-700">Actions</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        <% if (dmConversations.length === 0) { %>
+          <tr><td colspan="4" class="text-center py-8 text-gray-400 text-sm">No DM conversations yet. Connect Instagram and wait for incoming DMs.</td></tr>
+        <% } else { %>
+          <% dmConversations.forEach(conv => { %>
+            <tr class="hover:bg-pink-50/50 transition-colors">
+              <td class="px-6 py-4">
+                <p class="font-medium text-gray-900">@<%= conv.instagramUsername || conv.instagramUserId %></p>
+                <p class="text-xs text-gray-400 font-mono"><%= conv.instagramUserId %></p>
+              </td>
+              <td class="px-6 py-4 text-xs text-gray-500">
+                <%= conv.lastMessageAt ? new Date(conv.lastMessageAt).toLocaleString() : 'Never' %>
+              </td>
+              <td class="px-6 py-4">
+                <% if (conv.unreadCount > 0) { %>
+                  <span class="text-xs bg-red-100 text-red-600 px-2 py-1 rounded-full font-medium"><%= conv.unreadCount %> unread</span>
+                <% } else { %>
+                  <span class="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded-full">Read</span>
+                <% } %>
+              </td>
+              <td class="px-6 py-4 text-right">
+                <button onclick="openDmChat(<%= conv.id %>, '<%= (conv.instagramUsername || conv.instagramUserId).replace(/'/g, "\\'") %>')" class="px-3 py-1.5 bg-white border border-pink-200 text-pink-600 text-xs font-medium rounded-lg hover:bg-pink-50 transition-colors">
+                  <i class="ri-chat-1-line"></i> Chat
+                </button>
+              </td>
+            </tr>
+          <% }); %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+<% } %>
+
+<!-- Reply Rules -->
+<div class="bg-white rounded-2xl border border-pink-100 overflow-hidden mb-6">
+  <div class="p-5 border-b border-pink-100 flex items-center justify-between">
+    <h3 class="font-semibold text-gray-900">Auto-Reply Rules</h3>
+    <button onclick="document.getElementById('addRuleModal').showModal()" class="px-4 py-2 btn-pink text-white text-sm font-medium rounded-xl hover:shadow-lg transition-all flex items-center gap-2">
+      <i class="ri-add-line"></i> Add Rule
+    </button>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-gray-50 border-b border-pink-100">
+        <tr>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Rule</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Trigger</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Response</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Status</th>
+          <th class="text-right px-6 py-3 font-medium text-gray-700">Actions</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        <% if (rules.length === 0) { %>
+          <tr><td colspan="5" class="text-center py-8 text-gray-400 text-sm">No reply rules yet.</td></tr>
+        <% } else { %>
+          <% rules.forEach(rule => { %>
+            <tr class="hover:bg-pink-50/50 transition-colors">
+              <td class="px-6 py-4">
+                <p class="font-medium text-gray-900"><%= rule.name %></p>
+                <p class="text-xs text-gray-500"><%= rule.usageCount %> uses</p>
+              </td>
+              <td class="px-6 py-4">
+                <span class="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded-full capitalize"><%= rule.triggerType %></span>
+                <p class="text-xs text-gray-600 mt-1 truncate max-w-[150px]"><%= rule.triggerValue %></p>
+              </td>
+              <td class="px-6 py-4 text-xs text-gray-600 max-w-[200px] truncate"><%= rule.responseContent %></td>
+              <td class="px-6 py-4">
+                <span class="text-xs px-2 py-1 rounded-full <%= rule.isActive ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500' %>"><%= rule.isActive ? 'Active' : 'Paused' %></span>
+              </td>
+              <td class="px-6 py-4 text-right">
+                <button onclick="editRule('<%= rule.id %>', '<%= rule.name %>', '<%= rule.triggerType %>', '<%= rule.triggerValue.replace(/'/g, "\\'") %>', '<%= rule.responseContent.replace(/'/g, "\\'") %>', <%= rule.isActive %>)" class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg mr-1"><i class="ri-edit-line"></i></button>
+                <form action="/instagram/rules/delete/<%= rule.id %>" method="POST" class="inline" onsubmit="return confirm('Delete this rule?')">
+                  <button type="submit" class="p-2 text-red-600 hover:bg-red-50 rounded-lg"><i class="ri-delete-bin-line"></i></button>
+                </form>
+              </td>
+            </tr>
+          <% }); %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Recent Replies -->
+<div class="bg-white rounded-2xl border border-pink-100 overflow-hidden">
+  <div class="p-5 border-b border-pink-100 flex items-center justify-between">
+    <h3 class="font-semibold text-gray-900">Recent Auto-Replies</h3>
+    <span class="text-xs text-gray-500"><%= repliedComments.length %> total</span>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-gray-50 border-b border-pink-100">
+        <tr>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Comment</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Reply</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Post</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Date</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        <% if (repliedComments.length === 0) { %>
+          <tr><td colspan="4" class="text-center py-8 text-gray-400 text-sm">No auto-replies yet.</td></tr>
+        <% } else { %>
+          <% repliedComments.forEach(rc => { %>
+            <tr class="hover:bg-pink-50/50 transition-colors">
+              <td class="px-6 py-4 text-xs text-gray-600 max-w-[200px] truncate"><%= rc.commentText %></td>
+              <td class="px-6 py-4 text-xs text-gray-600 max-w-[200px] truncate"><%= rc.replyText %></td>
+              <td class="px-6 py-4 text-xs text-gray-500"><%= rc.mediaId %></td>
+              <td class="px-6 py-4 text-xs text-gray-500"><%= new Date(rc.repliedAt).toLocaleString() %></td>
+            </tr>
+          <% }); %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Add Rule Modal -->
+<dialog id="addRuleModal" class="modal">
+  <div class="modal-box bg-white rounded-2xl max-w-lg">
+    <h3 class="font-bold text-lg text-gray-900 mb-4">Add Reply Rule</h3>
+    <form action="/instagram/rules/create" method="POST">
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Rule Name</label>
+          <input type="text" name="name" required placeholder="e.g. Price Inquiry" class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm">
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Trigger Type</label>
+            <select name="triggerType" class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm bg-white">
+              <option value="contains">Contains</option>
+              <option value="exact">Exact Match</option>
+              <option value="starts_with">Starts With</option>
+              <option value="ends_with">Ends With</option>
+              <option value="regex">Regex</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Trigger Value</label>
+            <input type="text" name="triggerValue" required placeholder="e.g. price" class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm">
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Response</label>
+          <textarea name="responseContent" rows="3" required placeholder="Your auto-reply message..." class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm"></textarea>
+        </div>
+      </div>
+      <div class="flex gap-3 justify-end mt-4">
+        <button type="button" onclick="document.getElementById('addRuleModal').close()" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+        <button type="submit" class="px-6 py-2 btn-pink text-white text-sm font-medium rounded-lg">Save Rule</button>
+      </div>
+    </form>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+<!-- Edit Rule Modal -->
+<dialog id="editRuleModal" class="modal">
+  <div class="modal-box bg-white rounded-2xl max-w-lg">
+    <h3 class="font-bold text-lg text-gray-900 mb-4">Edit Reply Rule</h3>
+    <form id="editRuleForm" action="" method="POST">
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Rule Name</label>
+          <input type="text" name="name" id="erName" required class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm">
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Trigger Type</label>
+            <select name="triggerType" id="erTriggerType" class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm bg-white">
+              <option value="contains">Contains</option>
+              <option value="exact">Exact Match</option>
+              <option value="starts_with">Starts With</option>
+              <option value="ends_with">Ends With</option>
+              <option value="regex">Regex</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Trigger Value</label>
+            <input type="text" name="triggerValue" id="erTriggerValue" required class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm">
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Response</label>
+          <textarea name="responseContent" id="erResponse" rows="3" required class="w-full px-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm"></textarea>
+        </div>
+        <div class="flex items-center gap-2">
+          <input type="checkbox" name="isActive" id="erIsActive" class="rounded border-pink-200 text-pink-600 focus:ring-pink-500">
+          <label class="text-sm text-gray-700">Active</label>
+        </div>
+      </div>
+      <div class="flex gap-3 justify-end mt-4">
+        <button type="button" onclick="document.getElementById('editRuleModal').close()" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+        <button type="submit" class="px-6 py-2 btn-pink text-white text-sm font-medium rounded-lg">Update Rule</button>
+      </div>
+    </form>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+<script>
+async function testConnection() {
+  const resultsDiv = document.getElementById('testResults');
+  const loader = document.getElementById('testLoader');
+  const status = document.getElementById('testStatus');
+  const content = document.getElementById('testContent');
+  const mediaGrid = document.getElementById('mediaGrid');
+
+  resultsDiv.classList.remove('hidden');
+  loader.classList.remove('hidden');
+  status.textContent = 'Testing connection...';
+  status.className = 'text-sm text-gray-600';
+  content.innerHTML = '';
+
+  try {
+    const res = await fetch('/instagram/test-connection');
+    const data = await res.json();
+    loader.classList.add('hidden');
+
+    if (!data.success) {
+      status.textContent = 'Connection failed';
+      status.className = 'text-sm text-red-600 font-medium';
+      content.innerHTML = '<p class="text-sm text-red-500 mt-2"><i class="ri-error-warning-line"></i> ' + (data.error || 'Unknown error') + '</p>';
+      return;
+    }
+
+    status.textContent = '@' + (data.account?.username || 'Unknown') + ' (' + (data.account?.mediaCount || 0) + ' posts)';
+    status.className = 'text-sm text-green-600 font-medium';
+
+    if (data.media && data.media.length > 0) {
+      mediaGrid.innerHTML = data.media.map(m => `
+        <div class="bg-gray-50 rounded-xl overflow-hidden">
+          <div class="aspect-square bg-gray-200 relative">
+            ${m.thumbnail ? `<img src="${m.thumbnail}" alt="" class="w-full h-full object-cover" onerror="this.style.display='none'; this.parentElement.innerHTML='<div class=\'flex items-center justify-center h-full text-gray-400\'><i class=\'ri-image-line text-2xl\'></i></div>'">` : '<div class="flex items-center justify-center h-full text-gray-400"><i class="ri-image-line text-2xl"></i></div>'}
+            <span class="absolute top-2 right-2 text-[10px] bg-black/60 text-white px-1.5 py-0.5 rounded">${m.mediaType}</span>
+          </div>
+          <div class="p-2">
+            <p class="text-[10px] text-gray-600 line-clamp-2">${m.caption || 'No caption'}</p>
+            <p class="text-[10px] text-gray-400 mt-1">${m.timestamp ? new Date(m.timestamp).toLocaleDateString() : ''}</p>
+            <p class="text-[9px] text-gray-300 font-mono mt-0.5">${m.id}</p>
+          </div>
+        </div>
+      `).join('');
+      content.innerHTML = '<p class="text-sm text-green-600 mt-2"><i class="ri-check-line"></i> Found ' + data.media.length + ' post(s)</p>';
+    } else {
+      mediaGrid.innerHTML = '<p class="text-sm text-gray-400 col-span-full text-center py-4">No posts found</p>';
+      content.innerHTML = '<p class="text-sm text-amber-600 mt-2"><i class="ri-alert-line"></i> No posts found</p>';
+    }
+  } catch (err) {
+    loader.classList.add('hidden');
+    status.textContent = 'Connection test failed';
+    status.className = 'text-sm text-red-600 font-medium';
+    content.innerHTML = '<p class="text-sm text-red-500 mt-2"><i class="ri-error-warning-line"></i> ' + err.message + '</p>';
+  }
+}
+
+async function testRules() {
+  const sampleText = document.getElementById('testSampleText').value.trim();
+  const resultsDiv = document.getElementById('testRuleResults');
+  if (!sampleText) return;
+
+  resultsDiv.classList.remove('hidden');
+  resultsDiv.innerHTML = '<div class="flex items-center gap-2 text-sm text-gray-500"><div class="w-4 h-4 border-2 border-pink-500 border-t-transparent rounded-full animate-spin"></div> Testing...</div>';
+
+  try {
+    const res = await fetch('/instagram/test-rule', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sampleText }),
+    });
+    const data = await res.json();
+
+    if (!data.success) {
+      resultsDiv.innerHTML = '<p class="text-sm text-red-500"><i class="ri-error-warning-line"></i> ' + data.error + '</p>';
+      return;
+    }
+
+    const matchedCount = data.matchedRules.length;
+    let html = `<div class="text-sm mb-2"><span class="font-medium text-gray-700">Sample:</span> "${data.sampleText}" &mdash; `;
+    html += matchedCount > 0
+      ? `<span class="text-green-600 font-medium">${matchedCount} rule(s) matched</span>`
+      : '<span class="text-red-500 font-medium">No rules matched</span>';
+    html += '</div>';
+
+    html += '<div class="space-y-1">';
+    html += data.results.map(r => {
+      const badge = r.matched
+        ? (r.isActive ? '<span class="text-[10px] bg-green-100 text-green-600 px-2 py-0.5 rounded-full font-medium">MATCH</span>' : '<span class="text-[10px] bg-amber-100 text-amber-600 px-2 py-0.5 rounded-full font-medium">MATCH (Paused)</span>')
+        : '<span class="text-[10px] bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full font-medium">No match</span>';
+      return `<div class="text-xs px-3 py-2 rounded-lg ${r.matched && r.isActive ? 'bg-green-50' : 'bg-gray-50'}">
+        <div class="flex items-center gap-2 mb-0.5">
+          ${badge}
+          <span class="font-medium text-gray-800">${r.name}</span>
+          <span class="text-gray-400">(${r.triggerType}: "${r.triggerValue}")</span>
+        </div>
+        ${r.matched ? `<div class="text-gray-600 ml-0.5">&rarr; "${r.responseContent.slice(0, 80)}${r.responseContent.length > 80 ? '...' : ''}"</div>` : ''}
+      </div>`;
+    }).join('');
+    html += '</div>';
+
+    resultsDiv.innerHTML = html;
+  } catch (err) {
+    resultsDiv.innerHTML = '<p class="text-sm text-red-500"><i class="ri-error-warning-line"></i> ' + err.message + '</p>';
+  }
+}
+
+async function debugComments() {
+  const mediaId = document.getElementById('debugMediaId').value.trim();
+  const resultsDiv = document.getElementById('debugCommentsResults');
+  if (!mediaId) return;
+
+  resultsDiv.classList.remove('hidden');
+  resultsDiv.innerHTML = '<div class="flex items-center gap-2 text-sm text-gray-500"><div class="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div> Fetching comments...</div>';
+
+  try {
+    const res = await fetch(`/instagram/comments/${encodeURIComponent(mediaId)}`);
+    const data = await res.json();
+
+    if (!data.success) {
+      resultsDiv.innerHTML = '<p class="text-sm text-red-500"><i class="ri-error-warning-line"></i> ' + data.error + '</p>';
+      return;
+    }
+
+    if (data.comments.length === 0) {
+      resultsDiv.innerHTML = '<p class="text-sm text-gray-400">No comments found for this post.</p>';
+      return;
+    }
+
+    let html = `<p class="text-xs text-gray-500 mb-2">Found ${data.comments.length} comment(s).</p>`;
+    html += '<div class="space-y-2">';
+    html += data.comments.map(c => {
+      const ownBadge = c.username === '<%= connection?.instagramUsername || "" %>' ? '<span class="text-[10px] bg-amber-100 text-amber-600 px-1.5 py-0.5 rounded font-medium">OWN COMMENT</span>' : '';
+      return `<div class="border border-gray-100 rounded-lg p-3 text-xs">
+        <div class="flex items-center gap-2 mb-1">
+          <span class="font-medium text-gray-800">@${c.username}</span>
+          ${ownBadge}
+          <span class="text-gray-400 ml-auto">${c.timestamp ? new Date(c.timestamp).toLocaleString() : ''}</span>
+        </div>
+        <div class="text-gray-600">"${c.text}"</div>
+      </div>`;
+    }).join('');
+    html += '</div>';
+
+    resultsDiv.innerHTML = html;
+  } catch (err) {
+    resultsDiv.innerHTML = '<p class="text-sm text-red-500"><i class="ri-error-warning-line"></i> ' + err.message + '</p>';
+  }
+}
+
+function editRule(id, name, triggerType, triggerValue, responseContent, isActive) {
+  document.getElementById('editRuleForm').action = '/instagram/rules/update/' + id;
+  document.getElementById('erName').value = name;
+  document.getElementById('erTriggerType').value = triggerType;
+  document.getElementById('erTriggerValue').value = triggerValue;
+  document.getElementById('erResponse').value = responseContent;
+  document.getElementById('erIsActive').checked = isActive === true || isActive === 'true' || isActive === 1;
+  document.getElementById('editRuleModal').showModal();
+}
+
+// ===== DM Chat Modal =====
+let currentDmConversationId = null;
+
+function openDmChat(conversationId, username) {
+  currentDmConversationId = conversationId;
+  document.getElementById('dmChatTitle').textContent = '@' + username;
+  document.getElementById('dmChatModal').showModal();
+  loadDmMessages(conversationId);
+}
+
+async function loadDmMessages(conversationId) {
+  const container = document.getElementById('dmChatMessages');
+  container.innerHTML = '<div class="flex items-center justify-center py-8"><div class="w-5 h-5 border-2 border-pink-500 border-t-transparent rounded-full animate-spin"></div></div>';
+
+  try {
+    const res = await fetch(`/instagram/dm/conversations/${conversationId}/messages`);
+    const data = await res.json();
+
+    if (!data.success) {
+      container.innerHTML = '<p class="text-sm text-red-500 text-center py-4">' + data.error + '</p>';
+      return;
+    }
+
+    if (data.messages.length === 0) {
+      container.innerHTML = '<p class="text-sm text-gray-400 text-center py-4">No messages yet.</p>';
+      return;
+    }
+
+    container.innerHTML = data.messages.map(m => {
+      const isInbound = m.direction === 'inbound';
+      return `<div class="flex ${isInbound ? 'justify-start' : 'justify-end'} mb-3">
+        <div class="max-w-[80%] px-3 py-2 rounded-xl text-xs ${isInbound ? 'bg-gray-100 text-gray-700 rounded-bl-none' : 'bg-pink-500 text-white rounded-br-none'}">
+          <p>${escapeHtml(m.messageText || '')}</p>
+          <p class="text-[10px] opacity-60 mt-1 ${isInbound ? 'text-gray-400' : 'text-pink-100'}">${new Date(m.createdAt).toLocaleString()} ${m.isAutoReply ? '· Auto-reply' : ''}</p>
+        </div>
+      </div>`;
+    }).join('');
+
+    container.scrollTop = container.scrollHeight;
+  } catch (err) {
+    container.innerHTML = '<p class="text-sm text-red-500 text-center py-4">' + err.message + '</p>';
+  }
+}
+
+async function sendDmMessage() {
+  const input = document.getElementById('dmChatInput');
+  const text = input.value.trim();
+  if (!text || !currentDmConversationId) return;
+
+  const btn = document.getElementById('dmChatSendBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ri-loader-4-line animate-spin"></i>';
+
+  try {
+    const res = await fetch('/instagram/dm/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ conversationId: currentDmConversationId, messageText: text }),
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      input.value = '';
+      await loadDmMessages(currentDmConversationId);
+    } else {
+      alert('Failed to send: ' + (data.error || 'Unknown error'));
+    }
+  } catch (err) {
+    alert('Error: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ri-send-plane-line"></i>';
+  }
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+</script>
+
+<!-- DM Chat Modal -->
+<dialog id="dmChatModal" class="modal">
+  <div class="modal-box bg-white rounded-2xl max-w-lg h-[600px] flex flex-col p-0">
+    <div class="p-4 border-b border-pink-100 flex items-center justify-between">
+      <h3 class="font-bold text-gray-900" id="dmChatTitle">DM Chat</h3>
+      <button onclick="document.getElementById('dmChatModal').close()" class="p-1 hover:bg-gray-100 rounded-lg"><i class="ri-close-line text-gray-500"></i></button>
+    </div>
+    <div id="dmChatMessages" class="flex-1 overflow-y-auto p-4 bg-gray-50"></div>
+    <div class="p-4 border-t border-pink-100 flex gap-2">
+      <input type="text" id="dmChatInput" placeholder="Type a message..." class="flex-1 px-3 py-2 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm" onkeypress="if(event.key==='Enter')sendDmMessage()">
+      <button id="dmChatSendBtn" onclick="sendDmMessage()" class="px-4 py-2 btn-pink text-white text-sm font-medium rounded-xl hover:shadow-lg transition-all">
+        <i class="ri-send-plane-line"></i>
+      </button>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>

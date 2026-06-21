@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Lead Form</title>
+  <style>
+    body { font-family: sans-serif; max-width: 400px; margin: 40px auto; }
+    label { display: block; margin: 10px 0 4px; font-weight: 600; }
+    input, button { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; }
+    button { background: #ec4899; color: #fff; border: none; cursor: pointer; margin-top: 16px; }
+    button:hover { opacity: 0.9; }
+    #status { margin-top: 12px; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <h2>Contact Us</h2>
+  <form id="leadForm">
+  <div>
+    <label>name</label>
+    <input type="text" name="name" id="name" required>
+  </div>
+  <div>
+    <label>email</label>
+    <input type="text" name="email" id="email" required>
+  </div>
+  <div>
+    <label>phone</label>
+    <input type="text" name="phone" id="phone" required>
+  </div>
+  <div>
+    <label>age</label>
+    <input type="text" name="age" id="age" required>
+  </div>
+    <button type="submit">Submit</button>
+  </form>
+  <div id="status"></div>
+
+  <script>
+    document.getElementById('leadForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const status = document.getElementById('status');
+      status.textContent = 'Sending...';
+
+      const formData = new FormData(this);
+      const payload = {};
+      formData.forEach((v, k) => payload[k] = v);
+
+      try {
+        const res = await fetch('http://localhost:3000/api/lead-url/lead-503514b0', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-API-Key': 'lk_2c5ef94efe9066fc3220d2db13e021a633ef37b6e336b238'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          status.style.color = 'green';
+          status.textContent = '✅ Submitted successfully! Code: ' + data.code;
+          this.reset();
+        } else {
+          status.style.color = 'red';
+          status.textContent = '❌ Error: ' + (data.error || 'Unknown error') + ' (Code: ' + data.code + ')';
+        }
+      } catch (err) {
+        status.style.color = 'red';
+        status.textContent = '❌ Network error: ' + err.message;
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,247 @@
+<div class="mb-6">
+  <h2 class="text-xl font-bold text-gray-900">Developer API</h2>
+  <p class="text-sm text-gray-500">Integrate WhatsApp messaging into your applications</p>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <div class="lg:col-span-2 space-y-6">
+    <!-- Authentication -->
+    <div class="bg-white rounded-2xl border border-pink-100 p-6">
+      <h3 class="font-semibold text-gray-900 mb-3"><i class="ri-shield-keyhole-line text-pink-500"></i> Authentication</h3>
+      <p class="text-sm text-gray-600 mb-4">All API requests require an API key in the Authorization header. Create API keys from the <a href="/api-keys" class="text-pink-600 hover:underline">API Keys</a> page.</p>
+      <div class="bg-gray-900 rounded-xl p-4 overflow-x-auto">
+        <code class="text-sm text-green-400 font-mono">Authorization: Bearer &lt;%= apiKey %&gt;</code>
+      </div>
+    </div>
+
+    <!-- Send Text Message -->
+    <div class="bg-white rounded-2xl border border-pink-100 p-6">
+      <h3 class="font-semibold text-gray-900 mb-3"><i class="ri-send-plane-line text-pink-500"></i> Send Text Message</h3>
+      <p class="text-sm text-gray-600 mb-3">Send a WhatsApp text message. If you don't provide <code>sessionId</code>, your first connected session is used automatically.</p>
+      <div class="flex items-center gap-2 mb-3">
+        <span class="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-lg">POST</span>
+        <code class="text-sm text-gray-700 font-mono">&lt;%= baseUrl %&gt;/api/messages/send</code>
+      </div>
+      <div class="bg-gray-900 rounded-xl p-4 overflow-x-auto">
+        <pre class="text-sm text-gray-300 font-mono">curl -X POST &lt;%= baseUrl %&gt;/api/messages/send \\
+  -H "Authorization: Bearer &lt;%= apiKey %&gt;" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "phone": "919876543210",
+    "message": "Hello from API!",
+    "type": "text"
+  }'</pre>
+      </div>
+    </div>
+
+    <!-- Send Image -->
+    <div class="bg-white rounded-2xl border border-pink-100 p-6">
+      <h3 class="font-semibold text-gray-900 mb-3"><i class="ri-image-line text-pink-500"></i> Send Image</h3>
+      <p class="text-sm text-gray-600 mb-3">Send an image with optional caption. Provide a publicly accessible <code>mediaUrl</code>.</p>
+      <div class="flex items-center gap-2 mb-3">
+        <span class="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-lg">POST</span>
+        <code class="text-sm text-gray-700 font-mono">&lt;%= baseUrl %&gt;/api/messages/send</code>
+      </div>
+      <div class="bg-gray-900 rounded-xl p-4 overflow-x-auto">
+        <pre class="text-sm text-gray-300 font-mono">curl -X POST &lt;%= baseUrl %&gt;/api/messages/send \\
+  -H "Authorization: Bearer &lt;%= apiKey %&gt;" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "phone": "919876543210",
+    "message": "Check out this offer!",
+    "type": "image",
+    "mediaUrl": "https://example.com/image.jpg"
+  }'</pre>
+      </div>
+    </div>
+
+    <!-- Send Video -->
+    <div class="bg-white rounded-2xl border border-pink-100 p-6">
+      <h3 class="font-semibold text-gray-900 mb-3"><i class="ri-video-line text-pink-500"></i> Send Video</h3>
+      <p class="text-sm text-gray-600 mb-3">Send a video file with caption.</p>
+      <div class="flex items-center gap-2 mb-3">
+        <span class="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-lg">POST</span>
+        <code class="text-sm text-gray-700 font-mono">&lt;%= baseUrl %&gt;/api/messages/send</code>
+      </div>
+      <div class="bg-gray-900 rounded-xl p-4 overflow-x-auto">
+        <pre class="text-sm text-gray-300 font-mono">curl -X POST &lt;%= baseUrl %&gt;/api/messages/send \\
+  -H "Authorization: Bearer &lt;%= apiKey %&gt;" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "phone": "919876543210",
+    "message": "Watch this demo video",
+    "type": "video",
+    "mediaUrl": "https://example.com/video.mp4"
+  }'</pre>
+      </div>
+    </div>
+
+    <!-- Send Document -->
+    <div class="bg-white rounded-2xl border border-pink-100 p-6">
+      <h3 class="font-semibold text-gray-900 mb-3"><i class="ri-file-line text-pink-500"></i> Send Document</h3>
+      <p class="text-sm text-gray-600 mb-3">Send PDF or document files.</p>
+      <div class="flex items-center gap-2 mb-3">
+        <span class="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-lg">POST</span>
+        <code class="text-sm text-gray-700 font-mono">&lt;%= baseUrl %&gt;/api/messages/send</code>
+      </div>
+      <div class="bg-gray-900 rounded-xl p-4 overflow-x-auto">
+        <pre class="text-sm text-gray-300 font-mono">curl -X POST &lt;%= baseUrl %&gt;/api/messages/send \\
+  -H "Authorization: Bearer &lt;%= apiKey %&gt;" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "phone": "919876543210",
+    "message": "Your invoice is attached",
+    "type": "document",
+    "mediaUrl": "https://example.com/invoice.pdf"
+  }'</pre>
+      </div>
+    </div>
+
+    <!-- Get Sessions -->
+    <div class="bg-white rounded-2xl border border-pink-100 p-6">
+      <h3 class="font-semibold text-gray-900 mb-3"><i class="ri-qr-code-line text-pink-500"></i> Get Sessions</h3>
+      <p class="text-sm text-gray-600 mb-3">Retrieve all your WhatsApp sessions to find which <code>sessionId</code> to use.</p>
+      <div class="flex items-center gap-2 mb-3">
+        <span class="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-lg">GET</span>
+        <code class="text-sm text-gray-700 font-mono">&lt;%= baseUrl %&gt;/api/sessions</code>
+      </div>
+      <div class="bg-gray-900 rounded-xl p-4 overflow-x-auto">
+        <pre class="text-sm text-gray-300 font-mono">curl -X GET &lt;%= baseUrl %&gt;/api/sessions \\
+  -H "Authorization: Bearer &lt;%= apiKey %&gt;"</pre>
+      </div>
+    </div>
+
+    <!-- Poll APIs -->
+    <div class="bg-white rounded-2xl border border-pink-100 p-6">
+      <h3 class="font-semibold text-gray-900 mb-3"><i class="ri-bar-chart-box-line text-green-500"></i> Poll APIs</h3>
+      <p class="text-sm text-gray-600 mb-3">Create polls, send them via WhatsApp, and retrieve vote results.</p>
+
+      <div class="space-y-4">
+        <div>
+          <div class="flex items-center gap-2 mb-2">
+            <span class="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-lg">POST</span>
+            <code class="text-sm text-gray-700 font-mono"><%= baseUrl %>/api/polls/send</code>
+          </div>
+          <div class="bg-gray-900 rounded-xl p-4 overflow-x-auto">
+            <pre class="text-sm text-gray-300 font-mono">curl -X POST <%= baseUrl %>/api/polls/send \
+  -H "Authorization: Bearer <%= apiKey %>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "phone": "919876543210",
+    "question": "Interested?",
+    "options": ["Yes", "No"]
+  }'</pre>
+          </div>
+          <p class="text-xs text-gray-500 mt-2"><i class="ri-information-line mr-1"></i> No <code>sessionId</code> needed if your API key is linked to a WhatsApp session at <a href="/api-keys" class="text-pink-600 hover:underline">/api-keys</a>.</p>
+        </div>
+
+        <div>
+          <div class="flex items-center gap-2 mb-2">
+            <span class="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-lg">POST</span>
+            <code class="text-sm text-gray-700 font-mono"><%= baseUrl %>/api/polls/send-bulk</code>
+          </div>
+          <div class="bg-gray-900 rounded-xl p-4 overflow-x-auto">
+            <pre class="text-sm text-gray-300 font-mono">curl -X POST <%= baseUrl %>/api/polls/send-bulk \
+  -H "Authorization: Bearer <%= apiKey %>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "phones": ["919876543210", "919876543211"],
+    "question": "Interested?",
+    "options": ["Yes", "No"],
+    "gapSeconds": 30
+  }'</pre>
+          </div>
+          <p class="text-xs text-gray-500 mt-2"><i class="ri-information-line mr-1"></i> No <code>sessionId</code> or <code>templateId</code> needed. Link your API key to a session at <a href="/api-keys" class="text-pink-600 hover:underline">/api-keys</a>.</p>
+        </div>
+
+        <div>
+          <div class="flex items-center gap-2 mb-2">
+            <span class="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-lg">GET</span>
+            <code class="text-sm text-gray-700 font-mono"><%= baseUrl %>/api/polls/results</code>
+          </div>
+          <div class="bg-gray-900 rounded-xl p-4 overflow-x-auto">
+            <pre class="text-sm text-gray-300 font-mono">curl -X GET "<%= baseUrl %>/api/polls/results?pollName=Interested" \
+  -H "Authorization: Bearer <%= apiKey %>"</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Webhook Events -->
+    <div class="bg-white rounded-2xl border border-pink-100 p-6">
+      <h3 class="font-semibold text-gray-900 mb-3"><i class="ri-webhook-line text-pink-500"></i> Webhook Events</h3>
+      <p class="text-sm text-gray-600 mb-3">Configure webhooks at <a href="/webhooks" class="text-pink-600 hover:underline">/webhooks</a> to receive real-time event notifications. When a webhook is active, your URL receives a POST request.</p>
+      <div class="space-y-2 mb-4">
+        <div class="flex items-center gap-2 bg-gray-50 rounded-lg p-3">
+          <i class="ri-broadcast-line text-pink-500"></i>
+          <code class="text-sm text-gray-700 font-mono">message.received</code>
+          <span class="text-xs text-gray-400 ml-auto">When someone sends you a message</span>
+        </div>
+        <div class="flex items-center gap-2 bg-gray-50 rounded-lg p-3">
+          <i class="ri-broadcast-line text-pink-500"></i>
+          <code class="text-sm text-gray-700 font-mono">message.sent</code>
+          <span class="text-xs text-gray-400 ml-auto">When auto-reply or API sends a message</span>
+        </div>
+        <div class="flex items-center gap-2 bg-gray-50 rounded-lg p-3">
+          <i class="ri-broadcast-line text-pink-500"></i>
+          <code class="text-sm text-gray-700 font-mono">session.connected</code>
+          <span class="text-xs text-gray-400 ml-auto">When a WhatsApp session connects</span>
+        </div>
+        <div class="flex items-center gap-2 bg-gray-50 rounded-lg p-3">
+          <i class="ri-broadcast-line text-pink-500"></i>
+          <code class="text-sm text-gray-700 font-mono">session.disconnected</code>
+          <span class="text-xs text-gray-400 ml-auto">When a session disconnects</span>
+        </div>
+      </div>
+      <p class="text-xs text-gray-500 mb-2">Webhook payload structure:</p>
+      <div class="bg-gray-900 rounded-xl p-4 overflow-x-auto">
+        <pre class="text-sm text-gray-300 font-mono">{
+  "event": "message.received",
+  "timestamp": "2025-01-01T12:00:00Z",
+  "secret": "your_webhook_secret",
+  "data": {
+    "sessionId": 1,
+    "from": "919876543210@c.us",
+    "body": "Hello",
+    "hasMedia": false
+  }
+}</pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="space-y-6">
+    <div class="bg-white rounded-2xl border border-pink-100 p-6">
+      <h3 class="font-semibold text-gray-900 mb-4">Quick Reference</h3>
+      <div class="space-y-4">
+        <div>
+          <p class="text-xs text-gray-500 uppercase font-semibold mb-1">Base URL</p>
+          <code class="text-sm bg-gray-100 px-3 py-1.5 rounded-lg block break-all">&lt;%= baseUrl %&gt;</code>
+        </div>
+        <div>
+          <p class="text-xs text-gray-500 uppercase font-semibold mb-1">Content-Type</p>
+          <code class="text-sm bg-gray-100 px-3 py-1.5 rounded-lg block">application/json</code>
+        </div>
+        <div>
+          <p class="text-xs text-gray-500 uppercase font-semibold mb-1">Rate Limit</p>
+          <p class="text-sm text-gray-700">30 messages/minute</p>
+        </div>
+        <div>
+          <p class="text-xs text-gray-500 uppercase font-semibold mb-1">Session ID</p>
+          <p class="text-sm text-gray-700">Optional. Priority: request body → API key default → first connected session.</p>
+        </div>
+      </div>
+      <a href="/api-keys" class="mt-6 block w-full py-2.5 text-center text-sm font-medium text-pink-600 border border-pink-200 rounded-xl hover:bg-pink-50 transition-colors">
+        <i class="ri-key-line"></i> Manage API Keys
+      </a>
+    </div>
+
+    <div class="bg-gradient-to-br from-pink-500 to-pink-600 rounded-2xl p-6 text-white">
+      <h3 class="font-semibold mb-2"><i class="ri-customer-service-line"></i> Need Help?</h3>
+      <p class="text-sm text-pink-100 mb-4">Contact our support team for integration assistance.</p>
+      <a href="/help" class="block w-full py-2.5 text-center text-sm font-medium text-pink-600 bg-white rounded-xl hover:bg-pink-50 transition-colors">
+        View Help Center
+      </a>
+    </div>
+  </div>
+</div>

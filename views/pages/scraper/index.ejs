@@ -1,0 +1,450 @@
+<div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+  <div>
+    <h2 class="text-xl font-bold text-gray-900">Business Scraper</h2>
+    <p class="text-sm text-gray-500">Scrape business data from Google Maps</p>
+  </div>
+</div>
+
+<!-- Scrape Form -->
+<div class="bg-white rounded-2xl border border-pink-100 p-6 mb-6">
+  <h3 class="font-semibold text-gray-900 mb-4"><i class="ri-map-pin-line text-pink-500"></i> New Scrape Job</h3>
+  <form id="scrapeForm" action="/scraper/run" method="POST" data-no-loading>
+    <div class="grid md:grid-cols-3 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Business Type *</label>
+        <input type="text" name="query" required placeholder="e.g. Dentist, Restaurant"
+          class="w-full px-4 py-2.5 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Location *</label>
+        <input type="text" name="location" required placeholder="e.g. Madurai, Tamil Nadu"
+          class="w-full px-4 py-2.5 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Max Results</label>
+        <input type="number" name="maxResults" value="10" min="1" max="100"
+          class="w-full px-4 py-2.5 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm">
+        <p class="text-xs text-gray-400 mt-1">2 credits per scraped record</p>
+      </div>
+    </div>
+    <button type="submit" id="scrapeSubmitBtn" class="mt-4 px-6 py-2.5 btn-pink text-white text-sm font-medium rounded-xl hover:shadow-lg transition-all flex items-center gap-2">
+      <!--div class="loading-spinner w-4 h-4 border-2 border-white border-t-transparent hidden" id="scrapeLoader"></div-->
+      <div class="w-4 h-4 border-2 border-white border-t-transparent hidden" id="scrapeLoader"></div>
+      <i class="ri-search-line" id="scrapeIcon"></i> Start Scraping
+    </button>
+  </form>
+</div>
+
+<!-- Jobs -->
+<% if (jobs && jobs.length > 0) { %>
+<div class="bg-white rounded-2xl border border-pink-100 overflow-hidden mb-6">
+  <div class="p-5 border-b border-pink-100">
+    <h3 class="font-semibold text-gray-900">Scraping Jobs</h3>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-gray-50 border-b border-pink-100">
+        <tr>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Query</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Location</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Status</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Found</th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Date</th>
+          <th class="text-right px-6 py-3 font-medium text-gray-700">Actions</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        <% jobs.forEach(job => { %>
+          <tr class="hover:bg-pink-50/50 transition-colors">
+            <td class="px-6 py-4 font-medium text-gray-900"><%= job.query %></td>
+            <td class="px-6 py-4 text-gray-600"><%= job.location %></td>
+            <td class="px-6 py-4">
+              <span class="text-xs px-2.5 py-1 rounded-full
+                <%= job.status === 'completed' ? 'bg-green-100 text-green-700' : job.status === 'running' ? 'bg-yellow-100 text-yellow-700' : job.status === 'failed' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600' %>"><%= job.status %></span>
+            </td>
+            <td class="px-6 py-4 text-gray-600"><%= job.recordsFound || 0 %></td>
+            <td class="px-6 py-4 text-xs text-gray-500"><%= new Date(job.createdAt).toLocaleDateString() %></td>
+            <td class="px-6 py-4 text-right">
+              <form action="/scraper/delete/<%= job.id %>" method="POST" class="inline" onsubmit="return confirm('Delete job and all records?')">
+                <button type="submit" class="p-2 text-red-600 hover:bg-red-50 rounded-lg"><i class="ri-delete-bin-line"></i></button>
+              </form>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+</div>
+<% } %>
+
+<!-- Scraped Businesses -->
+<div class="bg-white rounded-2xl border border-pink-100 overflow-hidden">
+  <div class="p-5 border-b border-pink-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <h3 class="font-semibold text-gray-900">Scraped Businesses</h3>
+    <div class="flex gap-2">
+      <% if (businesses && businesses.length > 0) { %>
+        <a href="/scraper/download-csv" id="downloadCsvBtn" class="px-4 py-2 bg-green-100 text-green-700 text-xs font-medium rounded-lg hover:bg-green-200 transition-colors flex items-center gap-1">
+          <i class="ri-download-line"></i> Download CSV
+        </a>
+        <button onclick="importSelected('leads')" class="px-4 py-2 bg-pink-100 text-pink-700 text-xs font-medium rounded-lg hover:bg-pink-200 transition-colors">
+          <i class="ri-import-line"></i> Import to Leads
+        </button>
+        <button onclick="importSelected('contacts')" class="px-4 py-2 bg-blue-100 text-blue-700 text-xs font-medium rounded-lg hover:bg-blue-200 transition-colors">
+          <i class="ri-contacts-line"></i> Import to Contacts
+        </button>
+      <% } %>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <% if (businesses && businesses.length > 0) { %>
+  <div class="p-4 border-b border-gray-100">
+    <div class="flex flex-wrap items-center gap-3">
+      <div class="relative flex-1 min-w-[200px]">
+        <i class="ri-search-line absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+        <input type="text" id="bizGlobalSearch" placeholder="Search all businesses..." 
+          class="w-full pl-10 pr-4 py-2 rounded-xl border border-pink-200 focus:border-pink-500 outline-none text-sm"
+          oninput="filterBusinesses()">
+      </div>
+      <select id="websiteFilter" class="px-3 py-2 rounded-xl border border-pink-200 text-sm bg-white outline-none focus:border-pink-500" onchange="filterBusinesses()">
+        <option value="all">All Websites</option>
+        <option value="has">Website Available</option>
+        <option value="no">No Website</option>
+      </select>
+    </div>
+  </div>
+  <% } %>
+
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm" id="bizTable">
+      <thead class="bg-gray-50 border-b border-pink-100">
+        <tr>
+          <th class="text-left px-6 py-3 font-medium text-gray-700"><input type="checkbox" id="selectAllBiz" class="rounded border-pink-200"></th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">
+            Name
+            <div class="mt-1"><input type="text" data-col="name" placeholder="Filter..." class="w-full px-2 py-1 text-xs rounded border border-gray-200 focus:border-pink-500 outline-none" oninput="filterBusinesses()"></div>
+          </th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">
+            Phone
+            <div class="mt-1"><input type="text" data-col="phone" placeholder="Filter..." class="w-full px-2 py-1 text-xs rounded border border-gray-200 focus:border-pink-500 outline-none" oninput="filterBusinesses()"></div>
+          </th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">
+            Email
+            <div class="mt-1"><input type="text" data-col="email" placeholder="Filter..." class="w-full px-2 py-1 text-xs rounded border border-gray-200 focus:border-pink-500 outline-none" oninput="filterBusinesses()"></div>
+          </th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">
+            Address
+            <div class="mt-1"><input type="text" data-col="address" placeholder="Filter..." class="w-full px-2 py-1 text-xs rounded border border-gray-200 focus:border-pink-500 outline-none" oninput="filterBusinesses()"></div>
+          </th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">
+            Website
+            <div class="mt-1"><input type="text" data-col="website" placeholder="Filter..." class="w-full px-2 py-1 text-xs rounded border border-gray-200 focus:border-pink-500 outline-none" oninput="filterBusinesses()"></div>
+          </th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">
+            Category
+            <div class="mt-1"><input type="text" data-col="category" placeholder="Filter..." class="w-full px-2 py-1 text-xs rounded border border-gray-200 focus:border-pink-500 outline-none" oninput="filterBusinesses()"></div>
+          </th>
+          <th class="text-left px-6 py-3 font-medium text-gray-700">Status</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        <% businesses.forEach(biz => { %>
+          <% if (!biz.phone && !biz.website && !biz.address) { %><% } else { %>
+          <tr class="hover:bg-pink-50/50 transition-colors biz-row" data-name="<%= (biz.name || '').toLowerCase() %>" data-phone="<%= (biz.phone || '').toLowerCase() %>" data-email="<%= (biz.email || '').toLowerCase() %>" data-address="<%= (biz.address || '').toLowerCase() %>" data-website="<%= (biz.website || '').toLowerCase() %>" data-category="<%= (biz.category || '').toLowerCase() %>">
+            <td class="px-6 py-4"><input type="checkbox" class="biz-checkbox rounded border-pink-200" value="<%= biz.id %>"></td>
+            <td class="px-6 py-4 font-medium text-gray-900"><%= biz.name %></td>
+            <td class="px-6 py-4 text-gray-600"><%= biz.phone || '' %></td>
+            <td class="px-6 py-4 text-gray-600 text-xs max-w-[150px] truncate" title="<%= biz.email || '' %>"><%= biz.email || '' %></td>
+            <td class="px-6 py-4 text-gray-600 max-w-xs truncate"><%= biz.address || '' %></td>
+            <td class="px-6 py-4 text-xs max-w-[180px] truncate" title="<%= biz.website || '' %>">
+              <% if (biz.website) { %>
+                <a href="<%= biz.website %>" target="_blank" class="text-pink-600 hover:underline"><%= biz.website %></a>
+              <% } %>
+            </td>
+            <td class="px-6 py-4"><span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full"><%= biz.category || '' %></span></td>
+            <td class="px-6 py-4"><span class="text-xs px-2 py-1 rounded-full <%= biz.importedToLeads ? 'bg-green-100 text-green-600' : 'bg-yellow-100 text-yellow-600' %>"><%= biz.importedToLeads ? 'Imported' : 'New' %></span></td>
+          </tr>
+          <% } %>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+  <% if (!businesses || businesses.length === 0) { %>
+    <div class="p-8 text-center">
+      <p class="text-sm text-gray-500">No scraped businesses yet. Start a new scrape job above.</p>
+    </div>
+  <% } %>
+</div>
+
+<!-- ===== SCRAPER PROGRESS MODAL ===== -->
+<div id="scraperModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[10000] hidden flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-8">
+    <div class="text-center mb-6">
+      <div class="w-16 h-16 rounded-full bg-pink-50 flex items-center justify-center mx-auto mb-4">
+        <i id="modalIcon" class="ri-loader-4-line text-3xl text-pink-500 animate-spin"></i>
+      </div>
+      <h2 id="modalTitle" class="text-xl font-bold text-gray-900">Scraping in Progress...</h2>
+      <p id="modalSub" class="text-sm text-gray-500 mt-1">Please wait while we search Google Maps</p>
+    </div>
+
+    <div class="bg-gray-50 rounded-xl p-4 mb-6 text-left">
+      <div class="grid grid-cols-2 gap-3 text-sm">
+        <div><span class="text-gray-400">Query</span><p id="modalQuery" class="font-medium text-gray-900 truncate">—</p></div>
+        <div><span class="text-gray-400">Location</span><p id="modalLocation" class="font-medium text-gray-900 truncate">—</p></div>
+        <div><span class="text-gray-400">Max Results</span><p id="modalMax" class="font-medium text-gray-900">—</p></div>
+        <div><span class="text-gray-400">Status</span><p id="modalStatus" class="font-medium text-pink-600 capitalize">running</p></div>
+      </div>
+    </div>
+
+    <div class="mb-6">
+      <div class="flex justify-between text-xs text-gray-500 mb-1">
+        <span id="modalProgressLabel">Starting...</span>
+        <span id="modalProgressPercent">0%</span>
+      </div>
+      <div class="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+        <div id="modalProgressBar" class="h-full bg-gradient-to-r from-pink-400 to-pink-600 rounded-full transition-all duration-500" style="width: 5%"></div>
+      </div>
+    </div>
+
+    <div class="flex items-center justify-center gap-6 mb-6">
+      <div class="text-center">
+        <p id="modalFound" class="text-2xl font-bold text-gray-900">0</p>
+        <p class="text-xs text-gray-400">Found</p>
+      </div>
+      <div class="w-px h-10 bg-gray-200"></div>
+      <div class="text-center">
+        <p id="modalTarget" class="text-2xl font-bold text-gray-900">—</p>
+        <p class="text-xs text-gray-400">Target</p>
+      </div>
+    </div>
+
+    <p id="modalMessage" class="text-sm text-gray-600 text-center mb-4 min-h-[20px]">Initializing browser...</p>
+
+    <div id="modalActions" class="hidden text-center">
+      <button onclick="closeScraperModal(true)" class="inline-flex items-center gap-2 px-6 py-2.5 btn-pink text-white text-sm font-medium rounded-xl hover:shadow-lg transition-all">
+        <i class="ri-check-line"></i> Done — View Results
+      </button>
+    </div>
+  </div>
+</div>
+
+<form id="importForm" action="/scraper/import-leads" method="POST" class="hidden">
+  <input type="hidden" name="businessIds" id="importBizIds">
+</form>
+<form id="importContactsForm" action="/scraper/import-contacts" method="POST" class="hidden">
+  <input type="hidden" name="businessIds" id="importContactsBizIds">
+</form>
+
+<script>
+// Init CSV link on page load
+updateCsvLink('', 'all', {});
+
+// ===== MODAL SCRAPER =====
+let scrapePollInterval = null;
+let scrapeJobId = null;
+let scrapeMaxResults = 10;
+
+const modalMessages = [
+  "Initializing browser...",
+  "Opening Google Maps...",
+  "Searching for businesses...",
+  "Extracting business details...",
+  "Finding phone numbers...",
+  "Almost there...",
+];
+
+function openScraperModal(query, location, maxResults) {
+  // Hide global loading overlay if it got triggered
+  const globalOverlay = document.getElementById('globalLoadingOverlay');
+  if (globalOverlay) globalOverlay.classList.add('hidden');
+
+  document.getElementById('scraperModal').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  document.getElementById('modalQuery').textContent = query || '—';
+  document.getElementById('modalLocation').textContent = location || '—';
+  document.getElementById('modalTarget').textContent = maxResults || '—';
+  document.getElementById('modalFound').textContent = '0';
+  document.getElementById('modalProgressBar').style.width = '5%';
+  document.getElementById('modalProgressPercent').textContent = '0%';
+  document.getElementById('modalStatus').textContent = 'running';
+  document.getElementById('modalActions').classList.add('hidden');
+  document.getElementById('modalIcon').className = 'ri-loader-4-line text-3xl text-pink-500 animate-spin';
+  document.getElementById('modalTitle').textContent = 'Scraping in Progress...';
+  document.getElementById('modalSub').textContent = 'Please wait while we search Google Maps';
+  document.getElementById('modalMessage').textContent = modalMessages[0];
+}
+
+function closeScraperModal(refresh) {
+  document.getElementById('scraperModal').classList.add('hidden');
+  document.body.style.overflow = '';
+  if (scrapePollInterval) clearInterval(scrapePollInterval);
+  scrapePollInterval = null;
+  if (refresh) window.location.reload();
+}
+
+function updateModalProgress(found, target, status, pct) {
+  document.getElementById('modalFound').textContent = found;
+  const percent = Math.min(100, Math.round(pct));
+  document.getElementById('modalProgressBar').style.width = percent + '%';
+  document.getElementById('modalProgressPercent').textContent = percent + '%';
+  document.getElementById('modalStatus').textContent = status;
+  const msgIndex = Math.min(modalMessages.length - 1, Math.floor(percent / (100 / modalMessages.length)));
+  document.getElementById('modalMessage').textContent = modalMessages[msgIndex] || modalMessages[0];
+}
+
+function markModalComplete(found) {
+  document.getElementById('modalIcon').className = 'ri-check-line text-3xl text-green-500';
+  document.getElementById('modalTitle').textContent = 'Scraping Complete!';
+  document.getElementById('modalSub').textContent = found + ' businesses found';
+  document.getElementById('modalProgressBar').style.width = '100%';
+  document.getElementById('modalProgressPercent').textContent = '100%';
+  document.getElementById('modalStatus').textContent = 'completed';
+  document.getElementById('modalMessage').textContent = 'All done! Your results are ready.';
+  document.getElementById('modalActions').classList.remove('hidden');
+}
+
+function markModalFailed(error) {
+  document.getElementById('modalIcon').className = 'ri-error-warning-line text-3xl text-red-500';
+  document.getElementById('modalTitle').textContent = 'Scraping Failed';
+  document.getElementById('modalSub').textContent = error || 'Something went wrong';
+  document.getElementById('modalProgressBar').classList.remove('from-pink-400', 'to-pink-600');
+  document.getElementById('modalProgressBar').classList.add('bg-red-500');
+  document.getElementById('modalMessage').textContent = error || 'Please try again.';
+  document.getElementById('modalActions').classList.remove('hidden');
+  document.getElementById('modalActions').innerHTML = `
+    <button onclick="closeScraperModal(true)" class="inline-flex items-center gap-2 px-6 py-2.5 bg-gray-600 text-white text-sm font-medium rounded-xl hover:shadow-lg transition-all">
+      <i class="ri-arrow-left-line"></i> Close
+    </button>`;
+}
+
+async function pollScraperJob(jobId, maxResults) {
+  try {
+    const res = await fetch(`/scraper/job-status/${jobId}`);
+    const data = await res.json();
+    if (!data.success) return;
+
+    const job = data.job;
+    const found = job.foundSoFar || job.recordsFound || 0;
+    const pct = Math.min(100, (found / maxResults) * 100);
+
+    if (job.status === 'completed') {
+      updateModalProgress(found, maxResults, 'completed', 100);
+      markModalComplete(found);
+      if (scrapePollInterval) clearInterval(scrapePollInterval);
+    } else if (job.status === 'failed') {
+      markModalFailed(job.errorMessage);
+      if (scrapePollInterval) clearInterval(scrapePollInterval);
+    } else {
+      updateModalProgress(found, maxResults, 'running', Math.max(5, pct));
+    }
+  } catch (e) {}
+}
+
+// Intercept form submission
+document.getElementById('scrapeForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const btn = document.getElementById('scrapeSubmitBtn');
+  const loader = document.getElementById('scrapeLoader');
+  const icon = document.getElementById('scrapeIcon');
+
+  btn.disabled = true;
+  loader.classList.remove('hidden');
+  icon.classList.add('hidden');
+
+  const formData = new FormData(this);
+  const query = formData.get('query');
+  const location = formData.get('location');
+  const maxResults = parseInt(formData.get('maxResults')) || 10;
+
+  try {
+    const res = await fetch('/scraper/run', {
+      method: 'POST',
+      body: formData,
+      headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    });
+    const data = await res.json();
+
+    if (!data.success) {
+      alert(data.error || 'Failed to start scraping');
+      btn.disabled = false;
+      loader.classList.add('hidden');
+      icon.classList.remove('hidden');
+      return;
+    }
+
+    scrapeJobId = data.jobId;
+    scrapeMaxResults = maxResults;
+    openScraperModal(query, location, maxResults);
+    pollScraperJob(scrapeJobId, scrapeMaxResults);
+    scrapePollInterval = setInterval(() => pollScraperJob(scrapeJobId, scrapeMaxResults), 3000);
+
+  } catch (err) {
+    alert('Network error. Please try again.');
+    btn.disabled = false;
+    loader.classList.add('hidden');
+    icon.classList.remove('hidden');
+  }
+});
+
+// ===== TABLE FILTERING =====
+document.getElementById('selectAllBiz').addEventListener('change', function() {
+  const visible = document.querySelectorAll('.biz-row:not([style*="display: none"]) .biz-checkbox');
+  visible.forEach(cb => cb.checked = this.checked);
+});
+
+function filterBusinesses() {
+  const global = document.getElementById('bizGlobalSearch')?.value.toLowerCase() || '';
+  const websiteFilter = document.getElementById('websiteFilter')?.value || 'all';
+  const colFilters = {};
+  document.querySelectorAll('#bizTable thead input[data-col]').forEach(inp => {
+    colFilters[inp.dataset.col] = inp.value.toLowerCase();
+  });
+
+  document.querySelectorAll('.biz-row').forEach(row => {
+    let show = true;
+    if (global) {
+      const text = (row.dataset.name + ' ' + row.dataset.phone + ' ' + row.dataset.email + ' ' + row.dataset.address + ' ' + row.dataset.website + ' ' + row.dataset.category);
+      if (!text.includes(global)) show = false;
+    }
+    for (const [col, val] of Object.entries(colFilters)) {
+      if (val && !row.dataset[col].includes(val)) show = false;
+    }
+    // Website availability filter
+    if (websiteFilter !== 'all') {
+      const hasWebsite = row.dataset.website && row.dataset.website.trim() !== '';
+      if (websiteFilter === 'has' && !hasWebsite) show = false;
+      if (websiteFilter === 'no' && hasWebsite) show = false;
+    }
+    row.style.display = show ? '' : 'none';
+  });
+
+  // Update CSV download link with current filters
+  updateCsvLink(global, websiteFilter, colFilters);
+}
+
+function updateCsvLink(global, websiteFilter, colFilters) {
+  const btn = document.getElementById('downloadCsvBtn');
+  if (!btn) return;
+  const params = new URLSearchParams();
+  if (global) params.set('search', global);
+  if (websiteFilter && websiteFilter !== 'all') params.set('websiteFilter', websiteFilter);
+  for (const [col, val] of Object.entries(colFilters)) {
+    if (val) params.set('search_' + col, val);
+  }
+  btn.href = '/scraper/download-csv' + (params.toString() ? '?' + params.toString() : '');
+}
+
+function importSelected(type) {
+  const selector = '.biz-checkbox:checked';
+  const checked = document.querySelectorAll(selector);
+  if (checked.length === 0) { alert('Select at least one business'); return; }
+  const ids = Array.from(checked).map(cb => cb.value);
+  if (type === 'leads') {
+    document.getElementById('importBizIds').value = JSON.stringify(ids);
+    document.getElementById('importForm').submit();
+  } else {
+    document.getElementById('importContactsBizIds').value = JSON.stringify(ids);
+    document.getElementById('importContactsForm').submit();
+  }
+}
+</script>

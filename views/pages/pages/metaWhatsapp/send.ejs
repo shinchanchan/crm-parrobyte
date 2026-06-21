@@ -1,0 +1,242 @@
+<div class="mb-6">
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div>
+      <h2 class="text-xl font-bold text-gray-900">Send WhatsApp API Message</h2>
+      <p class="text-sm text-gray-500">Send messages via Meta's official WhatsApp Business API</p>
+    </div>
+    <a href="/meta-whatsapp" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-xl transition-colors flex items-center gap-2 w-fit">
+      <i class="ri-arrow-left-line"></i> Back to API Dashboard
+    </a>
+  </div>
+</div>
+
+<% if (accounts.length === 0) { %>
+  <div class="bg-amber-50 border border-amber-200 rounded-2xl p-8 text-center">
+    <div class="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4">
+      <i class="ri-alert-line text-2xl text-amber-600"></i>
+    </div>
+    <h3 class="font-semibold text-gray-900 mb-2">No Account Connected</h3>
+    <p class="text-sm text-gray-500 mb-4">Connect a Meta WhatsApp API account first to start sending messages.</p>
+    <a href="/meta-whatsapp" class="px-5 py-2.5 btn-pink text-white text-sm font-medium rounded-xl hover:shadow-lg transition-all inline-flex items-center gap-2">
+      <i class="ri-link"></i> Connect Account
+    </a>
+  </div>
+<% } else { %>
+
+<!-- Credit Cost Banner -->
+<div class="bg-gradient-to-r from-pink-50 to-purple-50 border border-pink-100 rounded-xl p-4 mb-6 flex items-center justify-between">
+  <div class="flex items-center gap-3">
+    <div class="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center">
+      <i class="ri-coins-line text-pink-600"></i>
+    </div>
+    <div>
+      <p class="text-sm font-medium text-gray-700">Cost per message: <span class="text-pink-600 font-bold">₹<%= creditCost.toFixed(2) %></span></p>
+      <p class="text-[10px] text-gray-500">Credits deducted after successful send. No refund for failed sends.</p>
+    </div>
+  </div>
+  <div class="text-right">
+    <p class="text-xs text-gray-500">Your Balance</p>
+    <p class="text-lg font-bold text-pink-600">₹<%= parseFloat(creditBalance || 0).toFixed(2) %></p>
+  </div>
+</div>
+
+<!-- Send Form -->
+<div class="bg-white rounded-2xl border border-pink-100 p-6">
+  <form action="/meta-whatsapp/send" method="POST" enctype="multipart/form-data" id="sendForm">
+    <div class="space-y-4">
+      <!-- Account & Phone -->
+      <div class="grid md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">From Account *</label>
+          <select name="accountId" id="accountId" required class="w-full px-4 py-2.5 rounded-xl border border-pink-200 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none text-sm bg-white">
+            <% accounts.forEach(acc => { %>
+              <option value="<%= acc.id %>"><%= acc.accountName %> — <%= acc.displayPhoneNumber || acc.phoneNumberId %></option>
+            <% }); %>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">To Phone Number *</label>
+          <input type="text" name="phone" required placeholder="919876543210 (with country code, no +)"
+            class="w-full px-4 py-2.5 rounded-xl border border-pink-200 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none text-sm font-mono"
+            pattern="\d{10,15}" title="Enter phone number with country code, no + symbol">
+          <p class="text-[10px] text-gray-400 mt-1">Example: 919876543210 (India)</p>
+        </div>
+      </div>
+
+      <!-- Message Type Tabs -->
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Message Type</label>
+        <div class="flex gap-2 mb-3">
+          <button type="button" onclick="setMsgType('text')" id="tab-text" class="msg-tab px-4 py-2 rounded-xl text-sm font-medium transition-all bg-pink-100 text-pink-700 border border-pink-200">
+            <i class="ri-chat-1-line mr-1"></i> Text
+          </button>
+          <button type="button" onclick="setMsgType('template')" id="tab-template" class="msg-tab px-4 py-2 rounded-xl text-sm font-medium transition-all bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200">
+            <i class="ri-file-list-3-line mr-1"></i> Template
+          </button>
+          <button type="button" onclick="setMsgType('image')" id="tab-image" class="msg-tab px-4 py-2 rounded-xl text-sm font-medium transition-all bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200">
+            <i class="ri-image-line mr-1"></i> Image
+          </button>
+          <button type="button" onclick="setMsgType('document')" id="tab-document" class="msg-tab px-4 py-2 rounded-xl text-sm font-medium transition-all bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200">
+            <i class="ri-file-pdf-line mr-1"></i> Document
+          </button>
+          <button type="button" onclick="setMsgType('buttons')" id="tab-buttons" class="msg-tab px-4 py-2 rounded-xl text-sm font-medium transition-all bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200">
+            <i class="ri-toggle-line mr-1"></i> Buttons
+          </button>
+          <button type="button" onclick="setMsgType('list')" id="tab-list" class="msg-tab px-4 py-2 rounded-xl text-sm font-medium transition-all bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200">
+            <i class="ri-list-check mr-1"></i> List
+          </button>
+        </div>
+        <input type="hidden" name="messageType" id="messageType" value="text">
+      </div>
+
+      <!-- Text Input -->
+      <div id="input-text">
+        <label class="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Message *</label>
+        <textarea name="text" rows="4" class="w-full px-4 py-2.5 rounded-xl border border-pink-200 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none text-sm resize-none"
+          placeholder="Type your message here..." maxlength="4096"></textarea>
+        <p class="text-[10px] text-gray-400 mt-1">Max 4096 characters. For business-initiated conversations, use a template instead.</p>
+      </div>
+
+      <!-- Template Input -->
+      <div id="input-template" class="hidden">
+        <label class="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Select Template *</label>
+        <select name="templateId" id="templateId" class="w-full px-4 py-2.5 rounded-xl border border-pink-200 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none text-sm bg-white">
+          <option value="">Choose an approved template...</option>
+          <% templates.forEach(tpl => { %>
+            <option value="<%= tpl.id %>"><%= tpl.templateName %> (<%= tpl.language %>) — <%= tpl.category %></option>
+          <% }); %>
+        </select>
+        <% if (templates.length === 0) { %>
+          <div class="mt-2 p-3 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-700">
+            <i class="ri-alert-line mr-1"></i> No approved templates found. <a href="/meta-whatsapp/templates" class="underline font-medium">Create one first</a>.
+          </div>
+        <% } %>
+        <p class="text-[10px] text-gray-400 mt-1">Templates are required for business-initiated conversations outside the 24h window.</p>
+      </div>
+
+      <!-- Buttons Input -->
+      <div id="input-buttons" class="hidden">
+        <div class="bg-blue-50 border border-blue-100 rounded-xl p-4">
+          <p class="text-xs text-blue-700 mb-3"><i class="ri-information-line mr-1"></i> Button messages work on all WhatsApp versions via the official API. Max 3 buttons, 20 chars each.</p>
+          <div class="space-y-3">
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Message Body *</label>
+              <textarea name="text" rows="3" class="meta-btn-content w-full px-4 py-2.5 rounded-xl border border-pink-200 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none text-sm resize-none" placeholder="Please confirm your order:" maxlength="1024"></textarea>
+            </div>
+            <div class="grid grid-cols-3 gap-3">
+              <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Button 1</label>
+                <input type="text" name="btn_1" value="Yes" maxlength="20" class="w-full px-3 py-2 rounded-xl border border-pink-200 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none text-sm">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Button 2</label>
+                <input type="text" name="btn_2" value="No" maxlength="20" class="w-full px-3 py-2 rounded-xl border border-pink-200 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none text-sm">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Button 3 (optional)</label>
+                <input type="text" name="btn_3" placeholder="Maybe" maxlength="20" class="w-full px-3 py-2 rounded-xl border border-pink-200 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none text-sm">
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Footer (optional)</label>
+                <input type="text" name="btnFooter" maxlength="60" class="w-full px-3 py-2 rounded-xl border border-pink-200 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none text-sm" placeholder="Tap a button to respond">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- List Input -->
+      <div id="input-list" class="hidden">
+        <div class="bg-purple-50 border border-purple-100 rounded-xl p-4">
+          <p class="text-xs text-purple-700 mb-3"><i class="ri-information-line mr-1"></i> List messages show a scrollable dropdown. Max 10 options. Button text max 20 chars.</p>
+          <div class="space-y-3">
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Message Body *</label>
+              <textarea name="text" rows="3" class="meta-list-content w-full px-4 py-2.5 rounded-xl border border-pink-200 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none text-sm resize-none" placeholder="Please select your package:" maxlength="1024"></textarea>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">List Button Text *</label>
+              <input type="text" name="listButtonText" value="Select Package" maxlength="20" class="w-full px-3 py-2 rounded-xl border border-pink-200 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none text-sm">
+              <p class="text-[10px] text-gray-400 mt-1">Text on the button that opens the list (max 20 chars)</p>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Section Title</label>
+              <input type="text" name="listSectionTitles" value="Available Packages" maxlength="24" class="w-full px-3 py-2 rounded-xl border border-pink-200 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none text-sm">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Options *</label>
+              <textarea name="listSectionRows" rows="4" class="w-full px-4 py-2.5 rounded-xl border border-pink-200 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none text-sm font-mono text-xs resize-none" placeholder="Starter | ₹499/month&#10;Pro | ₹999/month&#10;Enterprise | ₹2499/month"></textarea>
+              <p class="text-[10px] text-gray-400 mt-1">Format: <code>Title | Description</code> (one per line). Title max 24 chars, description max 72 chars.</p>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 mb-1">Footer (optional)</label>
+              <input type="text" name="listFooter" maxlength="60" class="w-full px-3 py-2 rounded-xl border border-pink-200 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none text-sm" placeholder="Tap to select">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Media Input -->
+      <div id="input-media" class="hidden">
+        <label class="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Media File *</label>
+        <input type="file" name="mediaFile" id="mediaFile" accept="image/*,application/pdf,video/*,audio/*"
+          class="w-full px-4 py-2.5 rounded-xl border border-pink-200 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-pink-50 file:text-pink-600 hover:file:bg-pink-100">
+        <div class="mt-2">
+          <label class="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Caption (optional)</label>
+          <input type="text" name="caption" class="w-full px-4 py-2.5 rounded-xl border border-pink-200 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none text-sm" placeholder="Caption for image/video/document" maxlength="1024">
+        </div>
+        <p class="text-[10px] text-gray-400 mt-1">Max file size: 16MB (images), 100MB (documents), 16MB (videos)</p>
+      </div>
+
+      <!-- Submit -->
+      <div class="flex items-center justify-between pt-4 border-t border-gray-100">
+        <p class="text-xs text-gray-400">
+          <i class="ri-information-line mr-1"></i>
+          Messages sent via official API have higher delivery rates and zero ban risk.
+        </p>
+        <button type="submit" class="px-6 py-2.5 btn-pink text-white text-sm font-medium rounded-xl hover:shadow-lg transition-all flex items-center gap-2">
+          <i class="ri-send-plane-line"></i> Send Message
+        </button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<script>
+function setMsgType(type) {
+  document.getElementById('messageType').value = type;
+
+  // Update tabs
+  document.querySelectorAll('.msg-tab').forEach(tab => {
+    tab.classList.remove('bg-pink-100', 'text-pink-700', 'border-pink-200');
+    tab.classList.add('bg-gray-100', 'text-gray-600', 'border-gray-200');
+  });
+  const activeTab = document.getElementById('tab-' + type);
+  if (activeTab) {
+    activeTab.classList.remove('bg-gray-100', 'text-gray-600', 'border-gray-200');
+    activeTab.classList.add('bg-pink-100', 'text-pink-700', 'border-pink-200');
+  }
+
+  // Show/hide inputs
+  document.getElementById('input-text').classList.toggle('hidden', type !== 'text');
+  document.getElementById('input-template').classList.toggle('hidden', type !== 'template');
+  document.getElementById('input-media').classList.toggle('hidden', type !== 'image' && type !== 'document' && type !== 'video' && type !== 'audio');
+  document.getElementById('input-buttons').classList.toggle('hidden', type !== 'buttons');
+  document.getElementById('input-list').classList.toggle('hidden', type !== 'list');
+
+  // Update required attributes and clear inactive panels
+  const textInput = document.querySelector('#input-text [name="text"]');
+  const btnInput = document.querySelector('#input-buttons [name="text"]');
+  const listInput = document.querySelector('#input-list [name="text"]');
+  if (textInput) textInput.required = (type === 'text');
+  if (btnInput) { btnInput.required = (type === 'buttons'); if (type !== 'buttons') btnInput.value = ''; }
+  if (listInput) { listInput.required = (type === 'list'); if (type !== 'list') listInput.value = ''; }
+  document.getElementById('templateId').required = (type === 'template');
+  const mediaFile = document.getElementById('mediaFile');
+  if (mediaFile) mediaFile.required = (type === 'image' || type === 'document');
+}
+</script>
+
+<% } %>
