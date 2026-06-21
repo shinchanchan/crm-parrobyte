@@ -5,6 +5,11 @@
 
 <h1 align="center">ParroByte — All-in-One Business Automation CRM</h1>
 
+=======
+</p>
+
+<h1 align="center">ParroByte — All-in-One Business Automation CRM</h1>
+
 <p align="center">
   <strong>Automate Your Business Growth</strong><br/>
   WhatsApp CRM · YouTube Auto-Reply · Instagram Automation · AI Assistant · Lead Scraping · Bulk Messaging · Scheduling
@@ -62,6 +67,7 @@ The platform is built with a **pay-as-you-go credit model** — start free with 
 
 ---
 
+<<<<<<< HEAD
 ## 📸 Screenshots Gallery
 
 Below are real screenshots from the ParroByte CRM application. They show the landing page, authentication, dashboard, WhatsApp sessions, contacts, templates, AI assistant, business scraper, API keys, developer docs, admin panel, and help center.
@@ -190,6 +196,8 @@ Below are real screenshots from the ParroByte CRM application. They show the lan
 
 ---
 
+=======
+>>>>>>> 6d902fe0e284b65c99ccbe0f29cb30388055ff34
 ## 🛠️ Tech Stack
 
 | Layer | Technology |
